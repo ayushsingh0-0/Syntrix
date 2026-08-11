@@ -301,26 +301,25 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 
-export interface JwtPayload {
-  id: string;
-  email: string;
+export type AccessTokenPayload = {
+  userId: string;
 }
 
-export const generateToken = (payload: JwtPayload): string => {
-  return jwt.sign(payload, env.JWT_SECRET, {
+export const generateAccessToken = (userId: string): string => {
+  return jwt.sign({ userId }, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
   });
 };
 
-export const verifyToken = (token: string): JwtPayload => {
-  return jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+export const verifyToken = (token: string): AccessTokenPayload => {
+  return jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
 };
 ```
 
 #### How JWT Works:
 A JWT has 3 parts separated by dots: `header.payload.signature`
 1. **Header**: Specifies the algorithm (`HS256`).
-2. **Payload**: User identity data `{ "id": "cm...", "email": "ayush@example.com" }`.
+2. **Payload**: User identity data `{ "userId": "cm..." }`.
 3. **Signature**: `HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload), JWT_SECRET)`
 * **Why it is stateless**: The server does NOT need to store sessions in memory or query the DB on every request. It mathematically verifies the signature using `JWT_SECRET`. If any user tampers with the payload, the signature check fails immediately.
 
@@ -342,6 +341,23 @@ export class ApiError extends Error {
     Object.setPrototypeOf(this, ApiError.prototype); // Restores prototype chain in TypeScript
   }
 }
+```
+
+---
+
+#### `src/utils/asyncHandler.ts`
+* **What it is**: A higher-order function that wraps asynchronous Express controllers.
+* **Why it exists**: In Express 4, if an `async` route handler throws an error (e.g. database goes down) and you don't explicitly call `catch(next)`, the application hangs and the request never finishes. The `asyncHandler` automatically catches rejected promises and passes them to the global `error.middleware.ts`.
+
+```typescript
+import { NextFunction, Request, Response } from 'express';
+type AsyncController = (req: Request, res: Response, next: NextFunction) => Promise<void>;
+
+export const asyncHandler = (controller: AsyncController) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    controller(req, res, next).catch(next);
+  };
+};
 ```
 
 ---
@@ -411,6 +427,32 @@ export const loginSchema = z.object({
 ```
 
 * **Security defense**: Prevents malformed requests, SQL injection strings, and invalid data types from ever reaching our database layer.
+
+---
+
+### Step 6.5: Validation Middleware (`src/middleware/validate.middleware.ts`)
+
+* **What it does**: A reusable Express middleware that wraps the Zod schemas.
+* **Why it exists**: Instead of manually calling `schema.parse(req.body)` inside every controller, we use this middleware to intercept the request *before* the controller. If the body is invalid, it passes the error to the global error handler (`next(result.error)`) and the controller is never executed. This keeps controllers clean and focused only on business logic!
+
+```typescript
+import { Request, Response, NextFunction } from "express";
+import { z } from "zod";
+
+export const validate = (schema: z.ZodType) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const result = schema.safeParse(req.body);
+
+    if (!result.success) {
+      next(result.error);
+      return;
+    }
+
+    req.body = result.data;
+    next();
+  };
+};
+```
 
 ---
 
@@ -490,9 +532,9 @@ export const loginUser = async (email: string, password: string) => {
 
   // Step 3: Strip password & generate JWT token
   const { password: _, ...userData } = user;
-  const token = generateToken({ id: user.id, email: user.email });
+  const accessToken = generateAccessToken(user.id);
 
-  return { token, user: userData };
+  return { accessToken, user: userData };
 };
 ```
 
@@ -504,10 +546,10 @@ export const loginUser = async (email: string, password: string) => {
 
 ```typescript
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, JwtPayload } from '../utils/jwt';
+import { verifyToken, AccessTokenPayload } from '../utils/jwt';
 
 export interface AuthenticatedRequest extends Request {
-  user?: JwtPayload;
+  user?: AccessTokenPayload;
 }
 
 export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -548,16 +590,15 @@ export const authenticate = (req: AuthenticatedRequest, res: Response, next: Nex
 
 ```typescript
 import { Request, Response } from 'express';
-import { registerSchema, loginSchema } from '../validations/auth.validation';
 import { registerUser, loginUser } from '../services/auth.service';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 export const register = async (req: Request, res: Response) => {
-  // 1. Validate body schema with Zod (throws ZodError if invalid)
-  const data = registerSchema.parse(req.body);
+  // 1. Destructure validated data from req.body (thanks to validate.middleware.ts!)
+  const { name, email, password } = req.body;
 
   // 2. Call service business logic
-  const user = await registerUser(data.name, data.email, data.password);
+  const user = await registerUser(name, email, password);
 
   // 3. Send 201 Created HTTP response
   res.status(201).json({
@@ -567,11 +608,11 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  // 1. Validate login input
-  const data = loginSchema.parse(req.body);
+  // 1. Destructure validated login input
+  const { email, password } = req.body;
 
   // 2. Perform login and token generation
-  const result = await loginUser(data.email, data.password);
+  const result = await loginUser(email, password);
 
   // 3. Send 200 OK HTTP response
   res.status(200).json({
@@ -598,12 +639,13 @@ export const getMe = async (req: AuthenticatedRequest, res: Response) => {
 import { Router } from 'express';
 import { register, login, getMe } from './../controllers/auth.controller';
 import { authenticate } from '../middleware/auth.middleware';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const authRouter = Router();
 
-authRouter.post('/register', register);
-authRouter.post('/login', login);
-authRouter.get('/me', authenticate, getMe); // Protected route
+authRouter.post('/register', asyncHandler(register));
+authRouter.post('/login', asyncHandler(login));
+authRouter.get('/me', authenticate, asyncHandler(getMe));
 
 export default authRouter;
 ```
@@ -680,8 +722,9 @@ app.listen(env.PORT, () => {
 ### Trace 1: User Registration (`POST /api/v1/auth/register`)
 1. Client sends `POST /api/v1/auth/register` with `{ "name": "Ayush", "email": "ayush@example.com", "password": "password123" }`.
 2. `app.ts` receives request -> `morgan` logs it -> `helmet` sets security headers -> `express.json()` parses body into `req.body`.
-3. Routes match `/api/v1` -> `/auth` -> `/register` -> calls `register()` controller.
-4. `auth.controller.ts`: `registerSchema.parse(req.body)` validates data types and minimum lengths.
+3. Routes match `/api/v1` -> `/auth` -> `/register` -> calls `validate(registerSchema)` middleware.
+4. `validate.middleware.ts` parses the body. If invalid, it passes `ZodError` to `next(err)`. If valid, it overwrites `req.body` with parsed data and calls `next()`.
+5. `auth.controller.ts` `register()` is called, extracting `{ name, email, password }` directly from `req.body`.
 5. `auth.controller.ts` calls `registerUser(name, email, password)` in `auth.service.ts`.
 6. `auth.service.ts` calls `findUserByEmail(email)` in `user.repository.ts`.
 7. `user.repository.ts` runs Prisma query `prisma.user.findUnique({ where: { email } })`.
@@ -694,11 +737,12 @@ app.listen(env.PORT, () => {
 
 ### Trace 2: User Login (`POST /api/v1/auth/login`)
 1. Client sends `POST /api/v1/auth/login` with email and password.
-2. `auth.controller.ts`: `loginSchema.parse(req.body)` checks valid email format and non-empty password.
+2. `validate(loginSchema)` middleware intercepts the request and checks valid email format and non-empty password.
+3. `auth.controller.ts` `login()` executes, safely extracting `{ email, password }` from `req.body`.
 3. `auth.service.ts`: Looks up user by email via repository. If not found, throws `Error('Invalid email or password')`.
 4. `auth.service.ts`: Calls `comparePassword(password, user.password)` using bcrypt. If hash mismatch, throws `Error('Invalid email or password')`.
-5. `auth.service.ts`: Calls `generateToken({ id, email })` from `jwt.ts` to sign a JWT valid for 7 days.
-6. `auth.controller.ts` sends `200 OK` with `{ "success": true, "data": { "token": "...", "user": { ... } } }`.
+5. `auth.service.ts`: Calls `generateAccessToken(user.id)` from `jwt.ts` to sign a JWT valid for 15 minutes.
+6. `auth.controller.ts` sends `200 OK` with `{ "success": true, "data": { "accessToken": "...", "user": { ... } } }`.
 
 ---
 
@@ -707,7 +751,7 @@ app.listen(env.PORT, () => {
 2. Router matches route -> triggers `authenticate` middleware in `auth.middleware.ts`.
 3. `auth.middleware.ts`: Extracts token string, calls `verifyToken(token)`.
 4. `jwt.ts`: Verifies HMAC signature using `env.JWT_SECRET`.
-5. `auth.middleware.ts`: Attaches decoded payload `{ id, email }` to `req.user` and calls `next()`.
+5. `auth.middleware.ts`: Attaches decoded payload `{ userId }` to `req.user` and calls `next()`.
 6. `getMe` controller runs, reads `req.user`, and returns `200 OK` with `{ "success": true, "data": req.user }`.
 
 ---

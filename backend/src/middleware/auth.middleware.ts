@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, JwtPayload } from '../utils/jwt';
+import { verifyToken, AccessTokenPayload } from '../utils/jwt';
 
 export interface AuthenticatedRequest extends Request {
-  user?: JwtPayload;
+  user?: AccessTokenPayload;
 }
 
 export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
