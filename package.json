@@ -1,0 +1,22 @@
+{
+  "name": "syntrix",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Enterprise Team Collaboration Platform",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "echo \"Development commands will be added later\"",
+    "build": "echo \"Build commands will be added later\"",
+    "lint": "echo \"Lint commands will be added later\"",
+    "test": "echo \"Test commands will be added later\""
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
+}
