@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { registerUser, loginUser } from '../services/auth.service';
-import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 export const register = async (req: Request, res: Response) => {
   const { name, email, password } = req.body;
@@ -20,13 +19,6 @@ export const login = async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     data: result,
-  });
-};
-
-export const getMe = async (req: AuthenticatedRequest, res: Response) => {
-  res.status(200).json({
-    success: true,
-    data: req.user,
   });
 };
 

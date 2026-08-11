@@ -1,29 +1,33 @@
-import { Request, Response, NextFunction } from 'express';
-import { verifyToken, AccessTokenPayload } from '../utils/jwt';
+import { Request, Response, NextFunction } from "express";
+import { ApiError } from "../utils/ApiError";
+import { verifyAccessToken } from "../utils/jwt";
 
-export interface AuthenticatedRequest extends Request {
-  user?: AccessTokenPayload;
-}
+export const authenticate = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const authorization = req.headers.authorization;
 
-export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      success: false,
-      message: 'Access denied. No token provided.',
-    });
+  if (!authorization) {
+    next(new ApiError(401, "Authentication required"));
+    return;
   }
 
-  const token = authHeader.split(' ')[1];
+  const [scheme, token] = authorization.split(" ");
+
+  if (scheme !== "Bearer" || !token) {
+    next(new ApiError(401, "Invalid authorization header"));
+    return;
+  }
+
   try {
-    const decoded = verifyToken(token);
-    req.user = decoded;
+    const payload = verifyAccessToken(token);
+
+    res.locals.userId = payload.userId;
 
     next();
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid or expired token.',
-    });
+    next(error);
   }
 };

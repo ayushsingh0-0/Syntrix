@@ -10,10 +10,10 @@ export default function errorHandler(
 ): void {
   console.error(err);
 
-  if (err instanceof ApiError) {
-    res.status(err.statusCode).json({
+  if (err instanceof ApiError || (err && (err as any).statusCode)) {
+    res.status((err as any).statusCode || 400).json({
       success: false,
-      message: err.message,
+      message: (err as any).message,
     });
 
     return;
@@ -23,6 +23,14 @@ export default function errorHandler(
     res.status(400).json({
       success: false,
       errors: (err as any).issues || (err as any).errors,
+    });
+    return;
+  }
+
+  if (err && ((err as any).name === 'JsonWebTokenError' || (err as any).name === 'TokenExpiredError')) {
+    res.status(401).json({
+      success: false,
+      message: 'Invalid or expired access token',
     });
     return;
   }
