@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../utils/ApiError';
+import { ZodError } from 'zod';
 
 export default function errorHandler(
   err: unknown,
@@ -15,6 +16,14 @@ export default function errorHandler(
       message: err.message,
     });
 
+    return;
+  }
+
+  if (err && (err as any).name === 'ZodError') {
+    res.status(400).json({
+      success: false,
+      errors: (err as any).issues || (err as any).errors,
+    });
     return;
   }
 

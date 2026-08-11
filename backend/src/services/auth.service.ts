@@ -2,6 +2,8 @@ import { findUserByEmail, createUser } from '../repositories/user.repository';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { ApiError } from '../utils/ApiError';
+import { SafeUser } from '../types/user.types';
+
 export const registerUser = async (name: string, email: string, password: string) => {
   const existingUser = await findUserByEmail(email);
   if (existingUser) {
@@ -9,13 +11,15 @@ export const registerUser = async (name: string, email: string, password: string
   }
   const hashedPassword = await hashPassword(password);
   const user = await createUser(name, email, hashedPassword);
-  // return user;
-  return {
+  const safeUser: SafeUser = {
     id: user.id,
     name: user.name,
     email: user.email,
     createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
   };
+
+  return safeUser;
 };
 
 export const loginUser = async (email: string, password: string) => {
