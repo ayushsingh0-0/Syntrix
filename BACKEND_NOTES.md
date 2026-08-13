@@ -300,19 +300,36 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 ```typescript
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { ApiError } from './ApiError';
+import { UserRole } from '../generated/prisma/client';
 
 export type AccessTokenPayload = {
   userId: string;
+  role: UserRole;
 }
 
-export const generateAccessToken = (userId: string): string => {
-  return jwt.sign({ userId }, env.JWT_SECRET, {
+export const generateAccessToken = (userId: string, role: UserRole): string => {
+  return jwt.sign({ userId, role }, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
   });
 };
 
-export const verifyToken = (token: string): AccessTokenPayload => {
-  return jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
+export const verifyAccessToken = (token: string): AccessTokenPayload => {
+  const decoded = jwt.verify(token, env.JWT_SECRET);
+
+  if (
+    typeof decoded !== 'object' ||
+    decoded === null ||
+    typeof (decoded as any).userId !== 'string' ||
+    typeof (decoded as any).role !== 'string'
+  ) {
+    throw new ApiError(401, 'Invalid access token');
+  }
+
+  return {
+    userId: (decoded as any).userId,
+    role: (decoded as any).role,
+  };
 };
 ```
 
@@ -676,8 +693,11 @@ export default apiRouter;
 
 #### `src/types/auth.types.ts`
 ```typescript
+import { UserRole } from '../generated/prisma/client';
+
 export type AuthenticatedUser = {
   userId: string;
+  role: UserRole;
 };
 ```
 
@@ -714,6 +734,37 @@ export const authenticate = (
   } catch (error) {
     next(error);
   }
+};
+```
+
+#### `src/middleware/authorize.middleware.ts`
+* **What it does**: Enforces Role-Based Access Control (RBAC). It checks if the `role` attached to `res.locals.user` matches any of the `allowedRoles` passed into the middleware function.
+
+```typescript
+import { Request, Response, NextFunction } from "express";
+import { UserRole } from "../generated/prisma/client";
+import { ApiError } from "../utils/ApiError";
+
+export const authorize = (...allowedRoles: UserRole[]) => {
+  return (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): void => {
+    const user = res.locals.user;
+
+    if (!user) {
+      next(new ApiError(401, "Authentication required"));
+      return;
+    }
+
+    if (!allowedRoles.includes(user.role)) {
+      next(new ApiError(403, "You do not have permission to access this resource"));
+      return;
+    }
+
+    next();
+  };
 };
 ```
 
