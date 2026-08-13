@@ -49,3 +49,7 @@ lerna-debug.log*
 .agents/
 .claude/
 .windsurf/
+
+# Notes
+BACKEND_NOTES.md
+deep-research-report.md

@@ -651,19 +651,89 @@ export default authRouter;
 ```
 
 #### `src/routes/index.ts`
-* **What it does**: Master API Router. Aggregates all modular route files (`authRoutes`, `healthRoutes`, etc.) under one umbrella.
+* **What it does**: Master API Router. Aggregates all modular route files (`authRoutes`, `healthRoutes`, `userRoutes`, etc.) under one umbrella.
 
 ```typescript
 import { Router } from 'express';
 import authRoutes from './auth.routes';
 import healthRoutes from './health.routes';
+import userRoutes from './user.routes';
 
 const apiRouter = Router();
 
 apiRouter.use('/health', healthRoutes);
 apiRouter.use('/auth', authRoutes);
+apiRouter.use('/users', userRoutes);
 
 export default apiRouter;
+```
+
+---
+
+### Step 12: Typed Authenticated Context & RBAC (Role-Based Access Control)
+
+* **What it does**: Fetches the authenticated user profile from MySQL, rather than just returning a JWT payload. Introduces Prisma `UserRole` and typed `res.locals.user` for safe downstream access.
+
+#### `src/types/auth.types.ts`
+```typescript
+export type AuthenticatedUser = {
+  userId: string;
+};
+```
+
+#### `src/middleware/auth.middleware.ts` (Updated)
+```typescript
+import { Request, Response, NextFunction } from "express";
+import { ApiError } from "../utils/ApiError";
+import { verifyAccessToken } from "../utils/jwt";
+import { AuthenticatedUser } from "../types/auth.types";
+
+export const authenticate = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const authorization = req.headers.authorization;
+
+  if (!authorization) {
+    next(new ApiError(401, "Authentication required"));
+    return;
+  }
+
+  const [scheme, token] = authorization.split(" ");
+
+  if (scheme !== "Bearer" || !token) {
+    next(new ApiError(401, "Invalid authorization header"));
+    return;
+  }
+
+  try {
+    const payload: AuthenticatedUser = verifyAccessToken(token);
+    res.locals.user = payload;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+#### `src/controllers/user.controller.ts`
+```typescript
+import { Request, Response } from "express";
+import { getUserById } from "../services/user.service";
+
+export const getCurrentUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { userId } = res.locals.user;
+  const user = await getUserById(userId);
+
+  res.status(200).json({
+    success: true,
+    data: user,
+  });
+};
 ```
 
 ---
@@ -746,13 +816,15 @@ app.listen(env.PORT, () => {
 
 ---
 
-### Trace 3: Protected Profile Route (`GET /api/v1/auth/me`)
-1. Client sends `GET /api/v1/auth/me` with header `Authorization: Bearer <jwt_token>`.
+### Trace 3: Protected Profile Route (`GET /api/v1/users/me`)
+1. Client sends `GET /api/v1/users/me` with header `Authorization: Bearer <jwt_token>`.
 2. Router matches route -> triggers `authenticate` middleware in `auth.middleware.ts`.
-3. `auth.middleware.ts`: Extracts token string, calls `verifyToken(token)`.
+3. `auth.middleware.ts`: Extracts token string, calls `verifyAccessToken(token)`.
 4. `jwt.ts`: Verifies HMAC signature using `env.JWT_SECRET`.
-5. `auth.middleware.ts`: Attaches decoded payload `{ userId }` to `req.user` and calls `next()`.
-6. `getMe` controller runs, reads `req.user`, and returns `200 OK` with `{ "success": true, "data": req.user }`.
+5. `auth.middleware.ts`: Attaches decoded payload `{ userId }` to `res.locals.user` and calls `next()`.
+6. `getCurrentUser` controller runs, reads `res.locals.user.userId`, and calls `getUserById()`.
+7. `user.service.ts` fetches the user from MySQL and returns the safe profile (with `role`).
+8. Controller returns `200 OK` with `{ "success": true, "data": { ... } }`.
 
 ---
 
