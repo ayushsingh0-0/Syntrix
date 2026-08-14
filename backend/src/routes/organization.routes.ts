@@ -142,7 +142,12 @@ router.delete(
 import teamRoutes from './team.routes';
 router.use('/:id/teams', authenticate, asyncHandler(requireOrgMember), teamRoutes);
 
+// Project Management
+import projectRoutes from './project.routes';
+router.use('/:id/projects', authenticate, asyncHandler(requireOrgMember), projectRoutes);
+
 export default router;
+
 
 
 
