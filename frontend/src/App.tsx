@@ -23,6 +23,8 @@ import { Profile } from './pages/profile/Profile';
 import { TeamList } from './pages/teams/TeamList';
 import { ProjectList } from './pages/projects/ProjectList';
 import { ProjectDetail } from './pages/projects/ProjectDetail';
+import { ProjectBoard } from './pages/projects/ProjectBoard';
+
 
 // Public Route Guard (Redirect to home if already logged in)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -77,7 +79,9 @@ export function App() {
                 <Route path="/organization/teams" element={<TeamList />} />
                 <Route path="/projects" element={<ProjectList />} />
                 <Route path="/projects/:projectId" element={<ProjectDetail />} />
+                <Route path="/projects/:projectId/board" element={<ProjectBoard />} />
               </Route>
+
 
               {/* Catch-all redirect */}
               <Route path="*" element={<Navigate to="/" replace />} />

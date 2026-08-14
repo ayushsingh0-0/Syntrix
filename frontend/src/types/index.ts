@@ -121,3 +121,51 @@ export interface ApiErrorResponse {
   message: string;
   errors?: Record<string, string[]>;
 }
+
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'CANCELLED';
+
+export interface Task {
+  id: string;
+  projectId: string;
+  columnId?: string | null;
+  number: number;
+  key: string;
+  title: string;
+  description?: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  position: number;
+  assigneeId?: string | null;
+  reporterId: string;
+  dueDate?: string | null;
+  estimatedHours?: number | null;
+  assignee?: User | null;
+  reporter?: User | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BoardColumn {
+  id: string;
+  boardId: string;
+  name: string;
+  position: number;
+  color?: string | null;
+  wipLimit?: number | null;
+  tasks: Task[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Board {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string | null;
+  isDefault: boolean;
+  columns: BoardColumn[];
+  createdAt: string;
+  updatedAt: string;
+}
+

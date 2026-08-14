@@ -36,6 +36,33 @@ export const createProjectWithLead = async (
       },
     });
 
+    // Auto-provision default board and standard columns
+    const defaultBoard = await tx.board.create({
+      data: {
+        projectId: project.id,
+        name: 'Main Board',
+        isDefault: true,
+      },
+    });
+
+    const defaultColumns = [
+      { name: 'To Do', position: 0, color: '#64748b' },
+      { name: 'In Progress', position: 1, color: '#3b82f6' },
+      { name: 'In Review', position: 2, color: '#8b5cf6' },
+      { name: 'Done', position: 3, color: '#10b981' },
+    ];
+
+    for (const col of defaultColumns) {
+      await tx.boardColumn.create({
+        data: {
+          boardId: defaultBoard.id,
+          name: col.name,
+          position: col.position,
+          color: col.color,
+        },
+      });
+    }
+
     return project;
   });
 };
