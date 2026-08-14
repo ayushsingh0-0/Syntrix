@@ -16,12 +16,19 @@ import { requireOrgMember, requireOrgRole } from '../middleware/orgAuth.middlewa
 import { validate } from '../middleware/validate.middleware';
 import { asyncHandler } from '../utils/asyncHandler';
 import {
+  createInvite,
+  listInvites,
+  resendInvite,
+  revokeInvite,
+} from '../controllers/invitation.controller';
+import {
   createOrgSchema,
   updateOrgSchema,
   addMemberSchema,
   updateMemberRoleSchema,
   transferOwnershipSchema,
 } from '../validations/organization.validation';
+import { createInvitationSchema } from '../validations/invitation.validation';
 import { OrganizationRole } from '../generated/prisma/client';
 
 const router = Router();
@@ -81,4 +88,36 @@ router.post(
   asyncHandler(transferOwnership)
 );
 
+// Invitation Management
+router.post(
+  '/:id/invitations',
+  authenticate,
+  asyncHandler(requireOrgMember),
+  requireOrgRole(OrganizationRole.OWNER, OrganizationRole.ADMIN),
+  validate(createInvitationSchema),
+  asyncHandler(createInvite)
+);
+router.get(
+  '/:id/invitations',
+  authenticate,
+  asyncHandler(requireOrgMember),
+  requireOrgRole(OrganizationRole.OWNER, OrganizationRole.ADMIN),
+  asyncHandler(listInvites)
+);
+router.post(
+  '/:id/invitations/:invitationId/resend',
+  authenticate,
+  asyncHandler(requireOrgMember),
+  requireOrgRole(OrganizationRole.OWNER, OrganizationRole.ADMIN),
+  asyncHandler(resendInvite)
+);
+router.delete(
+  '/:id/invitations/:invitationId',
+  authenticate,
+  asyncHandler(requireOrgMember),
+  requireOrgRole(OrganizationRole.OWNER, OrganizationRole.ADMIN),
+  asyncHandler(revokeInvite)
+);
+
 export default router;
+
