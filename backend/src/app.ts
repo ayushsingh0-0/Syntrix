@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import apiRouter from './routes';
 import errorHandler from './middleware/error.middleware';
 
@@ -12,6 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
+app.use(cookieParser());
 
 app.use('/api/v1', apiRouter);
 app.use(errorHandler);
