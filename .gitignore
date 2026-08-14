@@ -50,6 +50,10 @@ lerna-debug.log*
 .claude/
 .windsurf/
 
-# Notes
+# Notes & Planning
 notes/
 deep-research-report.md
+roadmap.md
+*.docx
+Syntrix_Complete_Development_Roadmap_Checklist.docx
+
