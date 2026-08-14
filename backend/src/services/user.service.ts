@@ -13,7 +13,9 @@ export const getUserById = async (id: string) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    isEmailVerified: user.isEmailVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
 };
+

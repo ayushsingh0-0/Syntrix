@@ -1,6 +1,11 @@
-import { findUserByEmail, findUserById, createUser, updateUserPassword } from '../repositories/user.repository';
+import { findUserByEmail, findUserById, createUser, updateUserPassword, markEmailAsVerified } from '../repositories/user.repository';
 import { createRefreshToken, findRefreshToken, revokeRefreshToken, revokeAllUserTokens } from '../repositories/refreshToken.repository';
 import { createPasswordResetToken, findPasswordResetTokenByHash, deletePasswordResetTokensByUserId } from '../repositories/passwordReset.repository';
+import {
+  createEmailVerificationToken,
+  findEmailVerificationTokenByHash,
+  deleteEmailVerificationTokensByUserId,
+} from '../repositories/emailVerification.repository';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateAccessToken } from '../utils/jwt';
 import { generateOpaqueToken, hashToken } from '../utils/token';
@@ -15,17 +20,31 @@ export const registerUser = async (name: string, email: string, password: string
   }
   const hashedPassword = await hashPassword(password);
   const user = await createUser(name, email, hashedPassword);
+
+  // Generate initial email verification token (24 hours)
+  const rawVerificationToken = generateOpaqueToken();
+  const tokenHash = hashToken(rawVerificationToken);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await createEmailVerificationToken(user.id, tokenHash, expiresAt);
+
+  console.log(`[AUTH] Email verification token generated for ${user.email}: ${rawVerificationToken}`);
+
   const safeUser: SafeUser = {
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
+    isEmailVerified: user.isEmailVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
 
-  return safeUser;
+  return {
+    user: safeUser,
+    ...(process.env.NODE_ENV !== 'production' && { debugVerificationToken: rawVerificationToken }),
+  };
 };
+
 
 export const loginUser = async (email: string, password: string) => {
   const user = await findUserByEmail(email);
@@ -171,4 +190,49 @@ export const resetUserPassword = async (rawToken: string, newPassword: string) =
   // Security: Revoke all active sessions
   await revokeAllUserTokens(resetRecord.userId);
 };
+
+export const verifyUserEmail = async (rawToken: string) => {
+  const tokenHash = hashToken(rawToken);
+  const tokenRecord = await findEmailVerificationTokenByHash(tokenHash);
+
+  if (!tokenRecord) {
+    throw new ApiError(400, 'Invalid or expired verification token');
+  }
+
+  if (tokenRecord.expiresAt.getTime() < Date.now()) {
+    await deleteEmailVerificationTokensByUserId(tokenRecord.userId);
+    throw new ApiError(400, 'Invalid or expired verification token');
+  }
+
+  await markEmailAsVerified(tokenRecord.userId);
+  await deleteEmailVerificationTokensByUserId(tokenRecord.userId);
+};
+
+export const resendVerificationEmail = async (email: string) => {
+  const user = await findUserByEmail(email);
+
+  // Anti-enumeration: Return success message if user doesn't exist or is already verified
+  if (!user || user.isEmailVerified) {
+    return {
+      message: 'If an unverified account with that email exists, a verification link has been sent.',
+    };
+  }
+
+  // Clear previous verification tokens
+  await deleteEmailVerificationTokensByUserId(user.id);
+
+  const rawToken = generateOpaqueToken();
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+  await createEmailVerificationToken(user.id, tokenHash, expiresAt);
+
+  console.log(`[AUTH] Resent verification token for ${user.email}: ${rawToken}`);
+
+  return {
+    message: 'If an unverified account with that email exists, a verification link has been sent.',
+    ...(process.env.NODE_ENV !== 'production' && { debugVerificationToken: rawToken }),
+  };
+};
+
 

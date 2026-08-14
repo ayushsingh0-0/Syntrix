@@ -8,17 +8,20 @@ import {
   changeUserPassword,
   forgotPassword as forgotPasswordService,
   resetUserPassword,
+  verifyUserEmail,
+  resendVerificationEmail,
 } from '../services/auth.service';
 import { ApiError } from '../utils/ApiError';
 
 export const register = async (req: Request, res: Response) => {
   const { name, email, password } = req.body;
 
-  const user = await registerUser(name, email, password);
+  const result = await registerUser(name, email, password);
 
   res.status(201).json({
     success: true,
-    data: user,
+    data: result.user,
+    ...(result.debugVerificationToken && { debugVerificationToken: result.debugVerificationToken }),
   });
 };
 
@@ -124,5 +127,28 @@ export const resetPassword = async (req: Request, res: Response) => {
     message: 'Password reset successfully. Please log in with your new password.',
   });
 };
+
+export const verifyEmail = async (req: Request, res: Response) => {
+  const { token } = req.body;
+
+  await verifyUserEmail(token);
+
+  res.status(200).json({
+    success: true,
+    message: 'Email verified successfully.',
+  });
+};
+
+export const resendVerification = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  const result = await resendVerificationEmail(email);
+
+  res.status(200).json({
+    success: true,
+    ...result,
+  });
+};
+
 
 

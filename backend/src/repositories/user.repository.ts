@@ -31,3 +31,11 @@ export const updateUserPassword = async (id: string, password: string) => {
   });
 };
 
+export const markEmailAsVerified = async (id: string) => {
+  return prisma.user.update({
+    where: { id },
+    data: { isEmailVerified: true },
+  });
+};
+
+
