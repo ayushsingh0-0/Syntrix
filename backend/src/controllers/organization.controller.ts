@@ -10,7 +10,10 @@ import {
   updateMemberRoleService,
   removeMemberFromOrg,
   transferOrganizationOwnership,
+  getMyOrgPermissions,
+  getOrgPermissionsMatrix,
 } from '../services/organization.service';
+
 
 const getParam = (param: string | string[] | undefined): string => {
   return Array.isArray(param) ? param[0] : (param || '');
@@ -91,10 +94,11 @@ export const listMembers = async (req: Request, res: Response): Promise<void> =>
 };
 
 export const addMember = async (req: Request, res: Response): Promise<void> => {
+  const { userId: actingUserId } = res.locals.user;
   const orgId = getParam(req.params.id);
   const { userId, role } = req.body;
 
-  const member = await addMemberToOrganization(orgId, userId, role);
+  const member = await addMemberToOrganization(orgId, actingUserId, userId, role);
 
   res.status(201).json({
     success: true,
@@ -103,11 +107,12 @@ export const addMember = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const updateMemberRole = async (req: Request, res: Response): Promise<void> => {
+  const { userId: actingUserId } = res.locals.user;
   const orgId = getParam(req.params.id);
   const targetUserId = getParam(req.params.userId);
   const { role } = req.body;
 
-  await updateMemberRoleService(orgId, targetUserId, role);
+  await updateMemberRoleService(orgId, actingUserId, targetUserId, role);
 
   res.status(200).json({
     success: true,
@@ -124,7 +129,7 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
 
   res.status(200).json({
     success: true,
-    message: 'Member removed from organization successfully',
+    message: 'Member removed successfully',
   });
 };
 
@@ -137,6 +142,27 @@ export const transferOwnership = async (req: Request, res: Response): Promise<vo
 
   res.status(200).json({
     success: true,
-    message: 'Organization ownership transferred successfully',
+    message: 'Ownership transferred successfully',
+  });
+};
+
+export const getMyPermissionsController = async (req: Request, res: Response): Promise<void> => {
+  const { userId } = res.locals.user;
+  const orgId = getParam(req.params.id);
+
+  const permissions = await getMyOrgPermissions(orgId, userId);
+
+  res.status(200).json({
+    success: true,
+    data: permissions,
+  });
+};
+
+export const getMatrixController = async (_req: Request, res: Response): Promise<void> => {
+  const matrix = getOrgPermissionsMatrix();
+
+  res.status(200).json({
+    success: true,
+    data: matrix,
   });
 };

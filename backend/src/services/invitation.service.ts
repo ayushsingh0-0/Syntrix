@@ -13,6 +13,7 @@ import { findUserByEmail, findUserById } from '../repositories/user.repository';
 import { findOrgMember, findOrgById } from '../repositories/organization.repository';
 import { generateOpaqueToken, hashToken } from '../utils/token';
 import { InvitationStatus, OrganizationRole } from '../generated/prisma/client';
+import { canAssignRole } from '../config/permissions';
 import { SafeInvitation, InvitationPreview } from '../types/invitation.types';
 
 export const createOrganizationInvitation = async (
@@ -21,9 +22,25 @@ export const createOrganizationInvitation = async (
   email: string,
   role: OrganizationRole = OrganizationRole.MEMBER
 ) => {
-  const org = await findOrgById(orgId);
+  const [org, actingMember] = await Promise.all([
+    findOrgById(orgId),
+    findOrgMember(orgId, invitedById),
+  ]);
+
   if (!org) {
     throw new ApiError(404, 'Organization not found');
+  }
+
+  if (!actingMember) {
+    throw new ApiError(403, 'Actor is not a member of this organization');
+  }
+
+  // Privilege escalation check
+  if (!canAssignRole(actingMember.role, role)) {
+    throw new ApiError(
+      403,
+      `Forbidden: Your role (${actingMember.role}) cannot invite a member with role ${role}`
+    );
   }
 
   // 1. Check if the email is already an active member of this organization
@@ -34,6 +51,7 @@ export const createOrganizationInvitation = async (
       throw new ApiError(409, 'User is already a member of this organization');
     }
   }
+
 
   // 2. Generate 7-day token
   const rawToken = generateOpaqueToken();

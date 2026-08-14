@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `invitation` MODIFY `role` ENUM('OWNER', 'ADMIN', 'MANAGER', 'MEMBER', 'GUEST') NOT NULL DEFAULT 'MEMBER';
+
+-- AlterTable
+ALTER TABLE `organizationmember` MODIFY `role` ENUM('OWNER', 'ADMIN', 'MANAGER', 'MEMBER', 'GUEST') NOT NULL DEFAULT 'MEMBER';

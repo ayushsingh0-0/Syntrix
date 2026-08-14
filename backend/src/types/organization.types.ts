@@ -1,4 +1,5 @@
 import { OrganizationRole } from '../generated/prisma/client';
+import { OrgPermission } from '../config/permissions';
 import { PublicUser } from './user.types';
 
 export type SafeOrganization = {
@@ -27,4 +28,6 @@ export type OrgMemberContext = {
   organizationId: string;
   role: OrganizationRole;
   memberId: string;
+  permissions: OrgPermission[];
 };
+

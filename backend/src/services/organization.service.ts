@@ -17,7 +17,14 @@ import {
 } from '../repositories/organization.repository';
 import { findUserById } from '../repositories/user.repository';
 import { OrganizationRole } from '../generated/prisma/client';
+import {
+  canAssignRole,
+  canManageTargetRole,
+  getRolePermissions,
+  ROLE_PERMISSIONS,
+} from '../config/permissions';
 import { SafeOrganization, SafeOrganizationMember } from '../types/organization.types';
+
 
 export const slugify = (text: string): string => {
   return text
@@ -163,12 +170,29 @@ export const getOrganizationMembers = async (
 
 export const addMemberToOrganization = async (
   orgId: string,
+  actingUserId: string,
   targetUserId: string,
   role: OrganizationRole = OrganizationRole.MEMBER
 ): Promise<SafeOrganizationMember> => {
-  const targetUser = await findUserById(targetUserId);
+  const [targetUser, actingMember] = await Promise.all([
+    findUserById(targetUserId),
+    findOrgMember(orgId, actingUserId),
+  ]);
+
   if (!targetUser) {
     throw new ApiError(404, 'User to add not found');
+  }
+
+  if (!actingMember) {
+    throw new ApiError(403, 'Actor is not a member of this organization');
+  }
+
+  // Privilege escalation check
+  if (!canAssignRole(actingMember.role, role)) {
+    throw new ApiError(
+      403,
+      `Forbidden: Your role (${actingMember.role}) cannot assign the ${role} role`
+    );
   }
 
   const existingMember = await findOrgMember(orgId, targetUserId);
@@ -191,19 +215,47 @@ export const addMemberToOrganization = async (
 
 export const updateMemberRoleService = async (
   orgId: string,
+  actingUserId: string,
   targetUserId: string,
   newRole: OrganizationRole
 ): Promise<void> => {
-  const member = await findOrgMember(orgId, targetUserId);
-  if (!member) {
+  const [actingMember, targetMember] = await Promise.all([
+    findOrgMember(orgId, actingUserId),
+    findOrgMember(orgId, targetUserId),
+  ]);
+
+  if (!actingMember) {
+    throw new ApiError(403, 'Actor is not a member of this organization');
+  }
+
+  if (!targetMember) {
     throw new ApiError(404, 'Member not found in this organization');
   }
 
+  // Cannot modify roles of users with equal or higher rank (unless owner)
+  if (actingUserId !== targetUserId && !canManageTargetRole(actingMember.role, targetMember.role)) {
+    throw new ApiError(
+      403,
+      `Forbidden: Your role (${actingMember.role}) cannot modify a member with role ${targetMember.role}`
+    );
+  }
+
+  // Cannot grant a role equal to or higher than own role
+  if (!canAssignRole(actingMember.role, newRole)) {
+    throw new ApiError(
+      403,
+      `Forbidden: Your role (${actingMember.role}) cannot assign the ${newRole} role`
+    );
+  }
+
   // Prevent demoting the last owner
-  if (member.role === OrganizationRole.OWNER && newRole !== OrganizationRole.OWNER) {
+  if (targetMember.role === OrganizationRole.OWNER && newRole !== OrganizationRole.OWNER) {
     const ownerCount = await countOrgOwners(orgId);
     if (ownerCount <= 1) {
-      throw new ApiError(400, 'Cannot demote the sole owner of an organization. Transfer ownership instead.');
+      throw new ApiError(
+        400,
+        'Cannot demote the sole owner of an organization. Transfer ownership instead.'
+      );
     }
   }
 
@@ -215,16 +267,35 @@ export const removeMemberFromOrg = async (
   actingUserId: string,
   targetUserId: string
 ): Promise<void> => {
-  const member = await findOrgMember(orgId, targetUserId);
-  if (!member) {
+  const [actingMember, targetMember] = await Promise.all([
+    findOrgMember(orgId, actingUserId),
+    findOrgMember(orgId, targetUserId),
+  ]);
+
+  if (!actingMember) {
+    throw new ApiError(403, 'Actor is not a member of this organization');
+  }
+
+  if (!targetMember) {
     throw new ApiError(404, 'Member not found in this organization');
   }
 
+  // If removing someone else, must have higher authority rank
+  if (actingUserId !== targetUserId && !canManageTargetRole(actingMember.role, targetMember.role)) {
+    throw new ApiError(
+      403,
+      `Forbidden: Your role (${actingMember.role}) cannot remove a member with role ${targetMember.role}`
+    );
+  }
+
   // If the target is an OWNER, verify there is at least one other owner
-  if (member.role === OrganizationRole.OWNER) {
+  if (targetMember.role === OrganizationRole.OWNER) {
     const ownerCount = await countOrgOwners(orgId);
     if (ownerCount <= 1) {
-      throw new ApiError(400, 'The sole owner cannot leave the organization without transferring ownership or deleting the organization.');
+      throw new ApiError(
+        400,
+        'The sole owner cannot leave the organization without transferring ownership or deleting the organization.'
+      );
     }
   }
 
@@ -242,8 +313,28 @@ export const transferOrganizationOwnership = async (
 
   const targetMember = await findOrgMember(orgId, newOwnerId);
   if (!targetMember) {
-    throw new ApiError(404, 'Target user must be a member of the organization before becoming owner');
+    throw new ApiError(
+      404,
+      'Target user must be a member of the organization before becoming owner'
+    );
   }
 
   await transferOrgOwnership(orgId, currentOwnerId, newOwnerId);
 };
+
+export const getMyOrgPermissions = async (orgId: string, userId: string) => {
+  const member = await findOrgMember(orgId, userId);
+  if (!member) {
+    throw new ApiError(403, 'You are not a member of this organization');
+  }
+
+  return {
+    role: member.role,
+    permissions: getRolePermissions(member.role),
+  };
+};
+
+export const getOrgPermissionsMatrix = () => {
+  return ROLE_PERMISSIONS;
+};
+

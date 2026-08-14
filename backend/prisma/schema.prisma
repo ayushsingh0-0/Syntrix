@@ -88,9 +88,11 @@ model AuthAuditLog {
 enum OrganizationRole {
   OWNER
   ADMIN
+  MANAGER
   MEMBER
   GUEST
 }
+
 
 model Organization {
   id          String               @id @default(cuid())

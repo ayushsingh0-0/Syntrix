@@ -32,14 +32,17 @@ export const updateOrgSchema = z.object({
 
 export const addMemberSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
-  role: z.enum([OrganizationRole.ADMIN, OrganizationRole.MEMBER, OrganizationRole.GUEST]).default(OrganizationRole.MEMBER),
+  role: z
+    .enum([OrganizationRole.ADMIN, OrganizationRole.MANAGER, OrganizationRole.MEMBER, OrganizationRole.GUEST])
+    .default(OrganizationRole.MEMBER),
 });
 
 export const updateMemberRoleSchema = z.object({
-  role: z.enum([OrganizationRole.ADMIN, OrganizationRole.MEMBER, OrganizationRole.GUEST], {
-    message: 'Role must be ADMIN, MEMBER, or GUEST (use transfer-ownership to change OWNER)',
+  role: z.enum([OrganizationRole.ADMIN, OrganizationRole.MANAGER, OrganizationRole.MEMBER, OrganizationRole.GUEST], {
+    message: 'Role must be ADMIN, MANAGER, MEMBER, or GUEST (use transfer-ownership to change OWNER)',
   }),
 });
+
 
 
 export const transferOwnershipSchema = z.object({
