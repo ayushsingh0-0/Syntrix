@@ -146,18 +146,15 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
       setActivities(activitiesRes.data.data || []);
       setAttachments(attachmentsRes.data.data || []);
 
-      // Extract columns from default board
       const defaultBoard =
         boardsRes.data.data?.find((b: { isDefault: boolean }) => b.isDefault) || boardsRes.data.data?.[0];
       if (defaultBoard?.columns) {
         setColumns(defaultBoard.columns);
       }
 
-      // Filter out self from possible dependencies
       const otherTasks = (allTasksRes.data.data?.tasks || []).filter((o: Task) => o.id !== taskId);
       setProjectTasks(otherTasks);
 
-      // Check watcher status
       const userWatcher = t.watchers?.some((w) => w.userId === currentUser?.id);
       setIsWatching(!!userWatcher);
     } catch (err: unknown) {
@@ -168,8 +165,18 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   }, [currentOrg, projectId, taskId, currentUser?.id, showToast]);
 
   useEffect(() => {
-    fetchTaskDetails();
-  }, [fetchTaskDetails]);
+    let isCancelled = false;
+    if (taskId && currentOrg && projectId) {
+      fetchTaskDetails();
+    }
+    return () => {
+      isCancelled = true;
+      if (isCancelled) {
+        // cleanup flag
+      }
+    };
+  }, [fetchTaskDetails, taskId, currentOrg, projectId]);
+
 
   const handleSaveChanges = async () => {
     if (!currentOrg || !projectId || !taskId || !title.trim()) return;

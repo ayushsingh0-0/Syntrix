@@ -6,7 +6,10 @@ export type ActivityActionType =
   | 'ASSIGNEE_CHANGED'
   | 'SPRINT_CHANGED'
   | 'COMMENT_ADDED'
-  | 'COMMENT_DELETED';
+  | 'COMMENT_DELETED'
+  | 'ATTACHMENT_ADDED'
+  | 'ATTACHMENT_DELETED';
+
 
 export interface CreateActivityDTO {
   organizationId: string;
