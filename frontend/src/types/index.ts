@@ -259,5 +259,50 @@ export interface Board {
   updatedAt: string;
 }
 
+export interface CommentMention {
+  id: string;
+  commentId: string;
+  userId: string;
+  user: User;
+  createdAt: string;
+}
+
+export interface Comment {
+  id: string;
+  taskId: string;
+  userId: string;
+  parentId?: string | null;
+  content: string;
+  isEdited: boolean;
+  user: User;
+  mentions: CommentMention[];
+  replies?: Comment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ActivityAction =
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'STATUS_CHANGED'
+  | 'PRIORITY_CHANGED'
+  | 'ASSIGNEE_CHANGED'
+  | 'SPRINT_CHANGED'
+  | 'COMMENT_ADDED'
+  | 'COMMENT_DELETED';
+
+export interface ActivityLog {
+  id: string;
+  organizationId: string;
+  projectId?: string | null;
+  taskId?: string | null;
+  userId: string;
+  action: ActivityAction;
+  details?: Record<string, unknown> | null;
+  user: User;
+  createdAt: string;
+}
+
+
 
 

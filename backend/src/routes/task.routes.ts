@@ -24,4 +24,14 @@ router.post('/:taskId/watch', asyncHandler(taskController.toggleWatcher));
 router.post('/:taskId/dependencies', asyncHandler(taskController.addDependency));
 router.delete('/:taskId/dependencies/:dependencyId', asyncHandler(taskController.removeDependency));
 
+// Comments & Activity Sub-Resources
+import commentRoutes from './comment.routes';
+import { ActivityController } from '../controllers/activity.controller';
+
+const activityController = new ActivityController();
+
+router.use('/:taskId/comments', commentRoutes);
+router.get('/:taskId/activities', asyncHandler(activityController.getTaskActivities));
+
 export default router;
+

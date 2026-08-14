@@ -2,7 +2,9 @@ import { TaskRepository } from '../repositories/task.repository';
 import { BoardRepository } from '../repositories/board.repository';
 import { findProjectById } from '../repositories/project.repository';
 import { findOrgMember } from '../repositories/organization.repository';
+import { globalActivityService } from './activity.service';
 import { ApiError } from '../utils/ApiError';
+
 import type {
   TaskQueryParams,
   CreateLabelDTO,
@@ -92,8 +94,29 @@ export class TaskService {
       await this.taskRepo.syncTaskLabels(taskId, data.labelIds);
     }
 
+    // Automatic Activity Logging
+    if (data.status && data.status !== task.status) {
+      await globalActivityService.logEvent(orgId, projectId, taskId, task.reporterId, 'STATUS_CHANGED', {
+        from: task.status,
+        to: data.status,
+      });
+    }
+    if (data.priority && data.priority !== task.priority) {
+      await globalActivityService.logEvent(orgId, projectId, taskId, task.reporterId, 'PRIORITY_CHANGED', {
+        from: task.priority,
+        to: data.priority,
+      });
+    }
+    if (data.assigneeId !== undefined && data.assigneeId !== task.assigneeId) {
+      await globalActivityService.logEvent(orgId, projectId, taskId, task.reporterId, 'ASSIGNEE_CHANGED', {
+        from: task.assigneeId,
+        to: data.assigneeId,
+      });
+    }
+
     return this.taskRepo.findTaskDetailsById(taskId);
   }
+
 
   /**
    * Delete task
