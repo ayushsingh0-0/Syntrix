@@ -26,22 +26,22 @@ export const OrgMembers: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    if (currentOrg) {
-      api.get(`/organizations/${currentOrg.id}/members`).then((res) => {
-        if (isMounted) {
-          setMembers(res.data.data || []);
-          setIsLoading(false);
-        }
-      }).catch(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    } else {
-      setIsLoading(false);
-    }
+    if (!currentOrg) return;
+
+    api.get(`/organizations/${currentOrg.id}/members`).then((res) => {
+      if (isMounted) {
+        setMembers(res.data.data || []);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (isMounted) setIsLoading(false);
+    });
+
     return () => {
       isMounted = false;
     };
   }, [currentOrg]);
+
 
   const handleRoleChange = async (userId: string, newRole: OrganizationRole) => {
     if (!currentOrg) return;

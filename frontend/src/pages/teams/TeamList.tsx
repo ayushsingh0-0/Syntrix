@@ -27,23 +27,22 @@ export const TeamList: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    if (currentOrg) {
-      api.get(`/organizations/${currentOrg.id}/teams`).then((res) => {
-        if (isMounted) {
-          setTeams(res.data.data || []);
-          setIsLoading(false);
-        }
-      }).catch(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    } else {
-      setIsLoading(false);
-    }
+    if (!currentOrg) return;
+
+    api.get(`/organizations/${currentOrg.id}/teams`).then((res) => {
+      if (isMounted) {
+        setTeams(res.data.data || []);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (isMounted) setIsLoading(false);
+    });
 
     return () => {
       isMounted = false;
     };
   }, [currentOrg]);
+
 
   return (
     <div>

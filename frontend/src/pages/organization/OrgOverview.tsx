@@ -24,33 +24,32 @@ export const OrgOverview: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    if (currentOrg) {
-      Promise.all([
-        api.get(`/organizations/${currentOrg.id}/projects?limit=5`),
-        api.get(`/organizations/${currentOrg.id}/teams`),
-        api.get(`/organizations/${currentOrg.id}/members`),
-      ]).then(([projRes, teamsRes, membersRes]) => {
-        if (isMounted) {
-          setStats({
-            projectsCount: projRes.data.meta?.total || projRes.data.data?.length || 0,
-            teamsCount: teamsRes.data.data?.length || 0,
-            membersCount: membersRes.data.data?.length || 0,
-          });
-          setRecentProjects(projRes.data.data || []);
-          setTeams(teamsRes.data.data || []);
-          setIsLoading(false);
-        }
-      }).catch(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    } else {
-      setIsLoading(false);
-    }
+    if (!currentOrg) return;
+
+    Promise.all([
+      api.get(`/organizations/${currentOrg.id}/projects?limit=5`),
+      api.get(`/organizations/${currentOrg.id}/teams`),
+      api.get(`/organizations/${currentOrg.id}/members`),
+    ]).then(([projRes, teamsRes, membersRes]) => {
+      if (isMounted) {
+        setStats({
+          projectsCount: projRes.data.meta?.total || projRes.data.data?.length || 0,
+          teamsCount: teamsRes.data.data?.length || 0,
+          membersCount: membersRes.data.data?.length || 0,
+        });
+        setRecentProjects(projRes.data.data || []);
+        setTeams(teamsRes.data.data || []);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (isMounted) setIsLoading(false);
+    });
 
     return () => {
       isMounted = false;
     };
   }, [currentOrg]);
+
 
   if (!currentOrg || isLoading) {
     return <div style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>Loading workspace overview...</div>;

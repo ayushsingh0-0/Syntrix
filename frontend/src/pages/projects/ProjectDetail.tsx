@@ -81,39 +81,38 @@ export const ProjectDetail: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    if (currentOrg && projectId) {
-      Promise.all([
-        api.get(`/organizations/${currentOrg.id}/projects/${projectId}`),
-        api.get(`/organizations/${currentOrg.id}/projects/${projectId}/members`),
-        api.get(`/organizations/${currentOrg.id}/members`),
-        api.get(`/organizations/${currentOrg.id}/teams`),
-      ]).then(([projRes, membersRes, orgMembersRes, teamsRes]) => {
-        if (!isMounted) return;
-        const p: Project = projRes.data.data;
-        setProject(p);
-        setName(p.name);
-        setDescription(p.description || '');
-        setStatus(p.status);
-        setPriority(p.priority);
-        setTeamId(p.teamId || '');
+    if (!currentOrg || !projectId) return;
 
-        setMembers(membersRes.data.data || []);
-        setOrgMembers(orgMembersRes.data.data || []);
-        setTeams(teamsRes.data.data || []);
-        setIsLoading(false);
-      }).catch((err: unknown) => {
-        if (!isMounted) return;
-        showToast('error', getErrorMessage(err, 'Project not found'));
-        navigate('/projects');
-      });
-    } else {
+    Promise.all([
+      api.get(`/organizations/${currentOrg.id}/projects/${projectId}`),
+      api.get(`/organizations/${currentOrg.id}/projects/${projectId}/members`),
+      api.get(`/organizations/${currentOrg.id}/members`),
+      api.get(`/organizations/${currentOrg.id}/teams`),
+    ]).then(([projRes, membersRes, orgMembersRes, teamsRes]) => {
+      if (!isMounted) return;
+      const p: Project = projRes.data.data;
+      setProject(p);
+      setName(p.name);
+      setDescription(p.description || '');
+      setStatus(p.status);
+      setPriority(p.priority);
+      setTeamId(p.teamId || '');
+
+      setMembers(membersRes.data.data || []);
+      setOrgMembers(orgMembersRes.data.data || []);
+      setTeams(teamsRes.data.data || []);
       setIsLoading(false);
-    }
+    }).catch((err: unknown) => {
+      if (!isMounted) return;
+      showToast('error', getErrorMessage(err, 'Project not found'));
+      navigate('/projects');
+    });
 
     return () => {
       isMounted = false;
     };
   }, [currentOrg, projectId, navigate, showToast]);
+
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();

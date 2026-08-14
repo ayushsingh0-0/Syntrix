@@ -19,25 +19,28 @@ export const InviteLanding: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    if (token) {
-      api.get(`/invitations/${token}`).then((res) => {
-        if (isMounted) {
-          setPreview(res.data.data);
-          setIsLoading(false);
-        }
-      }).catch((err: unknown) => {
-        if (isMounted) {
-          showToast('error', getErrorMessage(err, 'Invalid or expired invitation link'));
-          setIsLoading(false);
-        }
-      });
-    } else {
+    if (!token) {
       setIsLoading(false);
+      return;
     }
+
+    api.get(`/invitations/${token}`).then((res) => {
+      if (isMounted) {
+        setPreview(res.data.data);
+        setIsLoading(false);
+      }
+    }).catch((err: unknown) => {
+      if (isMounted) {
+        showToast('error', getErrorMessage(err, 'Invalid or expired invitation link'));
+        setIsLoading(false);
+      }
+    });
+
     return () => {
       isMounted = false;
     };
   }, [token, showToast]);
+
 
   const handleAccept = async () => {
     if (!user) {

@@ -32,22 +32,22 @@ export const OrgInvitations: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    if (currentOrg) {
-      api.get(`/organizations/${currentOrg.id}/invitations`).then((res) => {
-        if (isMounted) {
-          setInvites(res.data.data || []);
-          setIsLoading(false);
-        }
-      }).catch(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    } else {
-      setIsLoading(false);
-    }
+    if (!currentOrg) return;
+
+    api.get(`/organizations/${currentOrg.id}/invitations`).then((res) => {
+      if (isMounted) {
+        setInvites(res.data.data || []);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (isMounted) setIsLoading(false);
+    });
+
     return () => {
       isMounted = false;
     };
   }, [currentOrg]);
+
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();

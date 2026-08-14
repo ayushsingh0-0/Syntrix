@@ -48,29 +48,28 @@ export const ProjectList: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    if (currentOrg) {
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) params.append('q', searchQuery.trim());
-      if (statusFilter) params.append('status', statusFilter);
-      if (priorityFilter) params.append('priority', priorityFilter);
-      if (showArchived) params.append('isArchived', 'true');
+    if (!currentOrg) return;
 
-      api.get(`/organizations/${currentOrg.id}/projects?${params.toString()}`).then((res) => {
-        if (isMounted) {
-          setProjects(res.data.data || []);
-          setIsLoading(false);
-        }
-      }).catch(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    } else {
-      setIsLoading(false);
-    }
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) params.append('q', searchQuery.trim());
+    if (statusFilter) params.append('status', statusFilter);
+    if (priorityFilter) params.append('priority', priorityFilter);
+    if (showArchived) params.append('isArchived', 'true');
+
+    api.get(`/organizations/${currentOrg.id}/projects?${params.toString()}`).then((res) => {
+      if (isMounted) {
+        setProjects(res.data.data || []);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (isMounted) setIsLoading(false);
+    });
 
     return () => {
       isMounted = false;
     };
   }, [currentOrg, searchQuery, statusFilter, priorityFilter, showArchived]);
+
 
   const handleArchiveToggle = async (projectId: string, isArchived: boolean, e: React.MouseEvent) => {
     e.preventDefault();
