@@ -276,13 +276,14 @@ export const ProjectDetail: React.FC = () => {
         }}
       >
         {[
-          { key: 'overview', label: 'Overview', icon: <FolderKanban size={16} /> },
-          { key: 'members', label: `Members (${members.length})`, icon: <Users size={16} /> },
-          { key: 'settings', label: 'Settings', icon: <Settings size={16} /> },
+          { key: 'overview' as const, label: 'Overview', icon: <FolderKanban size={16} /> },
+          { key: 'members' as const, label: `Members (${members.length})`, icon: <Users size={16} /> },
+          { key: 'settings' as const, label: 'Settings', icon: <Settings size={16} /> },
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
+            onClick={() => setActiveTab(tab.key)}
+
             style={{
               display: 'flex',
               alignItems: 'center',
