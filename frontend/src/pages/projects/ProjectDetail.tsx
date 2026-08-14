@@ -12,7 +12,9 @@ import {
   Save,
   Kanban,
   ListFilter,
+  Flame,
 } from 'lucide-react';
+
 import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
 import { getErrorMessage } from '../../utils/error';
@@ -254,6 +256,10 @@ export const ProjectDetail: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
+            <Link to={`/projects/${project.id}/sprints`} className="btn btn-secondary btn-sm">
+              <Flame size={14} color="var(--amber)" />
+              <span>Sprints</span>
+            </Link>
             <Link to={`/projects/${project.id}/tasks`} className="btn btn-secondary btn-sm">
               <ListFilter size={14} />
               <span>Tasks</span>
@@ -267,6 +273,7 @@ export const ProjectDetail: React.FC = () => {
               <span>{project.isArchived ? 'Restore' : 'Archive'}</span>
             </button>
           </div>
+
 
 
         </div>

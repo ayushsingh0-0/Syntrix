@@ -179,6 +179,9 @@ export interface Task {
   position: number;
   assigneeId?: string | null;
   reporterId: string;
+  sprintId?: string | null;
+  storyPoints?: number | null;
+
   dueDate?: string | null;
   estimatedHours?: number | null;
   assignee?: User | null;
@@ -189,6 +192,48 @@ export interface Task {
   blockingTasks?: TaskDependency[];
   createdAt: string;
   updatedAt: string;
+}
+
+export type SprintStatus = 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+
+export interface Sprint {
+  id: string;
+  projectId: string;
+  name: string;
+  goal?: string | null;
+  status: SprintStatus;
+  startDate?: string | null;
+  endDate?: string | null;
+  completedAt?: string | null;
+  tasks: Task[];
+  _count?: {
+    tasks: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BurndownPoint {
+  date: string;
+  idealRemainingPoints: number;
+  actualRemainingPoints: number;
+  idealRemainingTasks: number;
+  actualRemainingTasks: number;
+}
+
+export interface BurndownData {
+  sprint: {
+    id: string;
+    name: string;
+    status: SprintStatus;
+    startDate: string;
+    endDate: string;
+    totalStoryPoints: number;
+    completedStoryPoints: number;
+    totalTasks: number;
+    completedTasks: number;
+  };
+  timeline: BurndownPoint[];
 }
 
 export interface BoardColumn {
@@ -213,5 +258,6 @@ export interface Board {
   createdAt: string;
   updatedAt: string;
 }
+
 
 

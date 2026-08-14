@@ -25,6 +25,8 @@ import { ProjectList } from './pages/projects/ProjectList';
 import { ProjectDetail } from './pages/projects/ProjectDetail';
 import { ProjectBoard } from './pages/projects/ProjectBoard';
 import { ProjectTaskList } from './pages/projects/ProjectTaskList';
+import { ProjectSprints } from './pages/projects/ProjectSprints';
+
 
 
 
@@ -83,7 +85,9 @@ export function App() {
                 <Route path="/projects/:projectId" element={<ProjectDetail />} />
                 <Route path="/projects/:projectId/board" element={<ProjectBoard />} />
                 <Route path="/projects/:projectId/tasks" element={<ProjectTaskList />} />
+                <Route path="/projects/:projectId/sprints" element={<ProjectSprints />} />
               </Route>
+
 
 
 

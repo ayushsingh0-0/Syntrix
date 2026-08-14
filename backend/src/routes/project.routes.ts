@@ -53,12 +53,15 @@ router.patch(
   validate(updateProjectMemberRoleSchema),
   asyncHandler(updateProjectMemberRole)
 );
-// Sub-resource routers: Boards & Tasks
+// Sub-resource routers: Boards, Tasks & Sprints
 import boardRoutes from './board.routes';
 import taskRoutes from './task.routes';
+import sprintRoutes from './sprint.routes';
 
 router.use('/:projectId/boards', boardRoutes);
 router.use('/:projectId/tasks', taskRoutes);
+router.use('/:projectId/sprints', sprintRoutes);
 
 export default router;
+
 
