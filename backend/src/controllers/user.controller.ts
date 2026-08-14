@@ -69,7 +69,7 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
 
 export const revokeSession = async (req: Request, res: Response): Promise<void> => {
   const { userId } = res.locals.user;
-  const { id: sessionId } = req.params;
+  const sessionId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
   await revokeUserSession(userId, sessionId);
 
@@ -78,6 +78,7 @@ export const revokeSession = async (req: Request, res: Response): Promise<void> 
     message: 'Session revoked successfully',
   });
 };
+
 
 export const adminTest = async (
   req: Request,

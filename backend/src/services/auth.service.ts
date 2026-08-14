@@ -50,9 +50,13 @@ export const registerUser = async (name: string, email: string, password: string
     email: user.email,
     role: user.role,
     isEmailVerified: user.isEmailVerified,
+    bio: user.bio,
+    avatarUrl: user.avatarUrl,
+    phone: user.phone,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
+
 
   return {
     user: safeUser,
