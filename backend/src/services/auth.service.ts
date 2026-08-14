@@ -1,8 +1,9 @@
-import { findUserByEmail, createUser } from '../repositories/user.repository';
+import { findUserByEmail, findUserById, createUser, updateUserPassword } from '../repositories/user.repository';
 import { createRefreshToken, findRefreshToken, revokeRefreshToken, revokeAllUserTokens } from '../repositories/refreshToken.repository';
+import { createPasswordResetToken, findPasswordResetTokenByHash, deletePasswordResetTokensByUserId } from '../repositories/passwordReset.repository';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateAccessToken } from '../utils/jwt';
-import { generateOpaqueToken } from '../utils/token';
+import { generateOpaqueToken, hashToken } from '../utils/token';
 import { ApiError } from '../utils/ApiError';
 import { SafeUser } from '../types/user.types';
 import prisma from '../config/prisma';
@@ -97,3 +98,77 @@ export const logoutUser = async (tokenString: string) => {
 export const logoutAllSessions = async (userId: string) => {
   await revokeAllUserTokens(userId);
 };
+
+export const changeUserPassword = async (
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+) => {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const isCurrentPasswordValid = await comparePassword(currentPassword, user.password);
+  if (!isCurrentPasswordValid) {
+    throw new ApiError(400, 'Current password is incorrect');
+  }
+
+  const hashedPassword = await hashPassword(newPassword);
+  await updateUserPassword(userId, hashedPassword);
+
+  // Security: Invalidate all existing sessions after password change
+  await revokeAllUserTokens(userId);
+};
+
+export const forgotPassword = async (email: string) => {
+  const user = await findUserByEmail(email);
+
+  // Prevent email enumeration: always return success message regardless of existence
+  if (!user) {
+    return {
+      message: 'If an account with that email exists, a password reset link has been sent.',
+    };
+  }
+
+  // Clear any existing reset tokens for this user
+  await deletePasswordResetTokensByUserId(user.id);
+
+  const rawToken = generateOpaqueToken();
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+  await createPasswordResetToken(user.id, tokenHash, expiresAt);
+
+  console.log(`[AUTH] Password reset token generated for ${user.email}: ${rawToken}`);
+
+  return {
+    message: 'If an account with that email exists, a password reset link has been sent.',
+    // Included in response for development convenience
+    ...(process.env.NODE_ENV !== 'production' && { debugToken: rawToken }),
+  };
+};
+
+export const resetUserPassword = async (rawToken: string, newPassword: string) => {
+  const tokenHash = hashToken(rawToken);
+  const resetRecord = await findPasswordResetTokenByHash(tokenHash);
+
+  if (!resetRecord) {
+    throw new ApiError(400, 'Invalid or expired password reset token');
+  }
+
+  if (resetRecord.expiresAt.getTime() < Date.now()) {
+    await deletePasswordResetTokensByUserId(resetRecord.userId);
+    throw new ApiError(400, 'Invalid or expired password reset token');
+  }
+
+  const hashedPassword = await hashPassword(newPassword);
+  await updateUserPassword(resetRecord.userId, hashedPassword);
+
+  // Clean up reset tokens
+  await deletePasswordResetTokensByUserId(resetRecord.userId);
+
+  // Security: Revoke all active sessions
+  await revokeAllUserTokens(resetRecord.userId);
+};
+

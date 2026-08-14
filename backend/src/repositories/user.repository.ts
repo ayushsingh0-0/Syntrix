@@ -23,3 +23,11 @@ export const createUser = async (name: string, email: string, password: string) 
     },
   });
 };
+
+export const updateUserPassword = async (id: string, password: string) => {
+  return prisma.user.update({
+    where: { id },
+    data: { password },
+  });
+};
+

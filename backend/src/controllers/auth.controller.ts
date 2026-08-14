@@ -1,5 +1,14 @@
 import { Request, Response } from 'express';
-import { registerUser, loginUser, refreshUserToken, logoutUser, logoutAllSessions } from '../services/auth.service';
+import {
+  registerUser,
+  loginUser,
+  refreshUserToken,
+  logoutUser,
+  logoutAllSessions,
+  changeUserPassword,
+  forgotPassword as forgotPasswordService,
+  resetUserPassword,
+} from '../services/auth.service';
 import { ApiError } from '../utils/ApiError';
 
 export const register = async (req: Request, res: Response) => {
@@ -79,4 +88,41 @@ export const logoutAll = async (req: Request, res: Response) => {
     message: 'Logged out of all sessions successfully',
   });
 };
+
+export const changePassword = async (req: Request, res: Response) => {
+  const { userId } = res.locals.user;
+  const { currentPassword, newPassword } = req.body;
+
+  await changeUserPassword(userId, currentPassword, newPassword);
+  res.clearCookie('refreshToken');
+
+  res.status(200).json({
+    success: true,
+    message: 'Password changed successfully. Please log in with your new password.',
+  });
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  const result = await forgotPasswordService(email);
+
+  res.status(200).json({
+    success: true,
+    ...result,
+  });
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  const { token, newPassword } = req.body;
+
+  await resetUserPassword(token, newPassword);
+  res.clearCookie('refreshToken');
+
+  res.status(200).json({
+    success: true,
+    message: 'Password reset successfully. Please log in with your new password.',
+  });
+};
+
 
