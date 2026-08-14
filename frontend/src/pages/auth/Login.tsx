@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Mail, Lock, ArrowRight } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useAuth, useToast } from '../../context';
+import { getErrorMessage } from '../../utils/error';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -18,8 +18,8 @@ export const Login: React.FC = () => {
     try {
       await login(email.trim(), password);
       navigate('/');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Login failed. Check your credentials.');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Login failed. Check your credentials.'));
     } finally {
       setIsSubmitting(false);
     }

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle2, KeyRound } from 'lucide-react';
 import api from '../../services/api';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../context';
+import { getErrorMessage } from '../../utils/error';
 
 export const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -17,8 +18,8 @@ export const ForgotPassword: React.FC = () => {
       await api.post('/auth/forgot-password', { email: email.trim() });
       setIsSuccess(true);
       showToast('success', 'Reset instructions sent to your email.');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to send reset link.');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to send reset link.'));
     } finally {
       setIsSubmitting(false);
     }

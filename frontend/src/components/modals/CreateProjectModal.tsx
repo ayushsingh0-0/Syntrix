@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, FolderKanban } from 'lucide-react';
-import { useOrg } from '../../context/OrgContext';
-import { useToast } from '../../context/ToastContext';
+import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
+import { getErrorMessage } from '../../utils/error';
+import type { Team, ProjectPriority } from '../../types';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -17,20 +18,27 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
+  const [priority, setPriority] = useState<ProjectPriority>('MEDIUM');
   const [teamId, setTeamId] = useState('');
-  const [teams, setTeams] = useState<any[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     if (isOpen && currentOrg) {
       api.get(`/organizations/${currentOrg.id}/teams`).then((res) => {
-        setTeams(res.data.data || []);
+        if (isMounted) {
+          setTeams(res.data.data || []);
+        }
+      }).catch(() => {
+        // ignore
       });
     }
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, currentOrg]);
 
-  // Auto-generate project key suggestion from name
   const handleNameChange = (val: string) => {
     setName(val);
     if (!key || key.length <= 4) {
@@ -66,8 +74,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
       setTeamId('');
       onSuccess();
       onClose();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to create project');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to create project'));
     } finally {
       setIsSubmitting(false);
     }
@@ -143,7 +151,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               <select
                 className="input-field"
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
+                onChange={(e) => setPriority(e.target.value as ProjectPriority)}
               >
                 <option value="LOW">LOW</option>
                 <option value="MEDIUM">MEDIUM</option>

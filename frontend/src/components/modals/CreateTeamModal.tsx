@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { X, Layers } from 'lucide-react';
-import { useOrg } from '../../context/OrgContext';
-import { useToast } from '../../context/ToastContext';
+import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
+import { getErrorMessage } from '../../utils/error';
 
 interface CreateTeamModalProps {
   isOpen: boolean;
@@ -34,8 +34,8 @@ export const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ isOpen, onClos
       setDescription('');
       onSuccess();
       onClose();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to create team');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to create team'));
     } finally {
       setIsSubmitting(false);
     }

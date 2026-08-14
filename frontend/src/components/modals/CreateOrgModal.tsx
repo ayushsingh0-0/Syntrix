@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { X, Building2 } from 'lucide-react';
+import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
-import { useOrg } from '../../context/OrgContext';
-import { useToast } from '../../context/ToastContext';
+import { getErrorMessage } from '../../utils/error';
 
 interface CreateOrgModalProps {
   isOpen: boolean;
@@ -24,13 +24,13 @@ export const CreateOrgModal: React.FC<CreateOrgModalProps> = ({ isOpen, onClose 
     setIsSubmitting(true);
     try {
       const { data } = await api.post('/organizations', { name: name.trim() });
-      showToast('success', `Organization "${data.data.name}" created!`);
+      showToast('success', `Workspace "${data.data.name}" created!`);
       await refreshOrgs();
       switchOrg(data.data.id);
       setName('');
       onClose();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to create organization');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to create workspace'));
     } finally {
       setIsSubmitting(false);
     }
@@ -39,7 +39,7 @@ export const CreateOrgModal: React.FC<CreateOrgModalProps> = ({ isOpen, onClose 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
@@ -56,20 +56,15 @@ export const CreateOrgModal: React.FC<CreateOrgModalProps> = ({ isOpen, onClose 
               <Building2 size={20} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.1rem' }}>Create Organization</h3>
+              <h3 style={{ fontSize: '1.1rem' }}>Create New Workspace</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Create a new workspace for your teams and projects
+                Set up a new organization to collaborate with your team
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-            }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
           >
             <X size={18} />
           </button>
@@ -77,11 +72,11 @@ export const CreateOrgModal: React.FC<CreateOrgModalProps> = ({ isOpen, onClose 
 
         <form onSubmit={handleSubmit}>
           <div className="input-group">
-            <label className="input-label">Organization Name</label>
+            <label className="input-label">Workspace / Company Name</label>
             <input
               type="text"
               className="input-field"
-              placeholder="e.g. Acme Corp, HyperScale Labs"
+              placeholder="e.g. Acme Corporation, Syntrix Labs"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -92,7 +87,7 @@ export const CreateOrgModal: React.FC<CreateOrgModalProps> = ({ isOpen, onClose 
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1.5rem' }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
               Cancel
             </button>
             <button type="submit" className="btn btn-primary" disabled={isSubmitting || !name.trim()}>

@@ -3,8 +3,8 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { CreateOrgModal } from '../modals/CreateOrgModal';
-import { useAuth } from '../../context/AuthContext';
-import { useOrg } from '../../context/OrgContext';
+import { useAuth, useOrg } from '../../context';
+
 import { Building2, Plus } from 'lucide-react';
 
 export const DashboardLayout: React.FC = () => {

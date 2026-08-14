@@ -1,23 +1,23 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Layers, Plus, Users, Crown, ArrowRight } from 'lucide-react';
-import { useOrg } from '../../context/OrgContext';
+import { useOrg } from '../../context';
 import { CreateTeamModal } from '../../components/modals/CreateTeamModal';
 import { TeamDetailModal } from '../../components/modals/TeamDetailModal';
 import api from '../../services/api';
+import type { Team } from '../../types';
 
 export const TeamList: React.FC = () => {
   const { currentOrg, hasPermission } = useOrg();
-  const [teams, setTeams] = useState<any[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
   const fetchTeams = useCallback(async () => {
     if (!currentOrg) return;
-    setIsLoading(true);
     try {
       const { data } = await api.get(`/organizations/${currentOrg.id}/teams`);
-      setTeams(data.data);
+      setTeams(data.data || []);
     } catch {
       // ignore
     } finally {
@@ -26,8 +26,24 @@ export const TeamList: React.FC = () => {
   }, [currentOrg]);
 
   useEffect(() => {
-    fetchTeams();
-  }, [fetchTeams]);
+    let isMounted = true;
+    if (currentOrg) {
+      api.get(`/organizations/${currentOrg.id}/teams`).then((res) => {
+        if (isMounted) {
+          setTeams(res.data.data || []);
+          setIsLoading(false);
+        }
+      }).catch(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    } else {
+      setIsLoading(false);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentOrg]);
 
   return (
     <div>
@@ -53,7 +69,6 @@ export const TeamList: React.FC = () => {
         </div>
       ) : teams.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px 24px' }}>
-
           <Layers size={40} color="var(--accent)" style={{ margin: '0 auto 14px auto' }} />
           <h3 style={{ fontSize: '1.2rem', marginBottom: '6px' }}>No teams created yet</h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '20px' }}>

@@ -1,37 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
-import { useAuth } from './AuthContext';
+import { useAuth } from './useAuth';
+import type { Organization, OrganizationRole, OrgPermission } from '../types';
 
-export type OrganizationRole = 'OWNER' | 'ADMIN' | 'MANAGER' | 'MEMBER' | 'GUEST';
-
-export type OrgPermission =
-  | 'ORG_UPDATE'
-  | 'ORG_DELETE'
-  | 'ORG_TRANSFER_OWNERSHIP'
-  | 'BILLING_MANAGE'
-  | 'MEMBER_READ'
-  | 'MEMBER_INVITE'
-  | 'MEMBER_REMOVE'
-  | 'MEMBER_ROLE_UPDATE'
-  | 'TEAM_MANAGE'
-  | 'PROJECT_CREATE'
-  | 'PROJECT_READ'
-  | 'PROJECT_UPDATE'
-  | 'PROJECT_DELETE';
-
-export interface Organization {
-  id: string;
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-  isArchived: boolean;
-  createdAt: string;
-  updatedAt: string;
-  role?: OrganizationRole;
-  memberCount?: number;
-}
-
-interface OrgContextType {
+export interface OrgContextType {
   orgs: Organization[];
   currentOrg: Organization | null;
   myRole: OrganizationRole | null;
@@ -42,7 +14,7 @@ interface OrgContextType {
   hasPermission: (permission: OrgPermission) => boolean;
 }
 
-const OrgContext = createContext<OrgContextType | undefined>(undefined);
+export const OrgContext = createContext<OrgContextType | undefined>(undefined);
 
 export const OrgProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -93,8 +65,47 @@ export const OrgProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user, fetchPermissions]);
 
   useEffect(() => {
-    refreshOrgs();
-  }, [refreshOrgs]);
+    let isMounted = true;
+    if (user) {
+      api.get('/organizations').then(async (res) => {
+        if (!isMounted) return;
+        const orgList: Organization[] = res.data.data;
+        setOrgs(orgList);
+
+        const savedOrgId = localStorage.getItem('syntrix_active_org_id');
+        const matched = orgList.find((o) => o.id === savedOrgId) || orgList[0] || null;
+
+        setCurrentOrg(matched);
+        if (matched) {
+          localStorage.setItem('syntrix_active_org_id', matched.id);
+          try {
+            const permRes = await api.get(`/organizations/${matched.id}/permissions/me`);
+            if (isMounted) {
+              setMyRole(permRes.data.data.role);
+              setPermissions(permRes.data.data.permissions || []);
+            }
+          } catch {
+            if (isMounted) {
+              setMyRole(null);
+              setPermissions([]);
+            }
+          }
+        }
+      }).catch(() => {
+        if (isMounted) {
+          setOrgs([]);
+          setCurrentOrg(null);
+        }
+      });
+    } else {
+      setOrgs([]);
+      setCurrentOrg(null);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const switchOrg = async (orgId: string) => {
     const selected = orgs.find((o) => o.id === orgId);
@@ -125,12 +136,4 @@ export const OrgProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {children}
     </OrgContext.Provider>
   );
-};
-
-export const useOrg = () => {
-  const context = useContext(OrgContext);
-  if (!context) {
-    throw new Error('useOrg must be used within an OrgProvider');
-  }
-  return context;
 };

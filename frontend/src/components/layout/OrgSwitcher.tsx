@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Building2, ChevronDown, Check, Plus } from 'lucide-react';
-import { useOrg } from '../../context/OrgContext';
+import { useOrg } from '../../context';
+
 
 interface OrgSwitcherProps {
   onOpenCreateModal: () => void;

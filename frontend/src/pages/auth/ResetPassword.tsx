@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Lock, CheckCircle2, ShieldAlert } from 'lucide-react';
 import api from '../../services/api';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../context';
+import { getErrorMessage } from '../../utils/error';
 
 export const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -30,8 +31,8 @@ export const ResetPassword: React.FC = () => {
       await api.post('/auth/reset-password', { token, newPassword });
       setIsSuccess(true);
       showToast('success', 'Password reset successfully! Please sign in.');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Password reset link is invalid or expired.');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Password reset link is invalid or expired.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -95,7 +96,7 @@ export const ResetPassword: React.FC = () => {
             </div>
 
             <div className="input-group">
-              <label className="input-label">Confirm Password</label>
+              <label className="input-label">Confirm New Password</label>
               <div style={{ position: 'relative' }}>
                 <input
                   type="password"

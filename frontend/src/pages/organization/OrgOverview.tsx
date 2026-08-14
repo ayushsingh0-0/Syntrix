@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FolderKanban,
@@ -7,8 +7,9 @@ import {
   ArrowUpRight,
   Plus,
 } from 'lucide-react';
-import { useOrg } from '../../context/OrgContext';
+import { useOrg } from '../../context';
 import api from '../../services/api';
+import type { Project, Team } from '../../types';
 
 export const OrgOverview: React.FC = () => {
   const { currentOrg, myRole } = useOrg();
@@ -17,45 +18,43 @@ export const OrgOverview: React.FC = () => {
     teamsCount: 0,
     membersCount: 0,
   });
-  const [recentProjects, setRecentProjects] = useState<any[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
+  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-
-
-  const fetchOverview = useCallback(async () => {
-    if (!currentOrg) return;
-    setIsLoading(true);
-    try {
-      const [projRes, teamsRes, membersRes] = await Promise.all([
+  useEffect(() => {
+    let isMounted = true;
+    if (currentOrg) {
+      Promise.all([
         api.get(`/organizations/${currentOrg.id}/projects?limit=5`),
         api.get(`/organizations/${currentOrg.id}/teams`),
         api.get(`/organizations/${currentOrg.id}/members`),
-      ]);
-
-      setStats({
-        projectsCount: projRes.data.meta?.total || projRes.data.data?.length || 0,
-        teamsCount: teamsRes.data.data?.length || 0,
-        membersCount: membersRes.data.data?.length || 0,
+      ]).then(([projRes, teamsRes, membersRes]) => {
+        if (isMounted) {
+          setStats({
+            projectsCount: projRes.data.meta?.total || projRes.data.data?.length || 0,
+            teamsCount: teamsRes.data.data?.length || 0,
+            membersCount: membersRes.data.data?.length || 0,
+          });
+          setRecentProjects(projRes.data.data || []);
+          setTeams(teamsRes.data.data || []);
+          setIsLoading(false);
+        }
+      }).catch(() => {
+        if (isMounted) setIsLoading(false);
       });
-
-      setRecentProjects(projRes.data.data || []);
-      setTeams(teamsRes.data.data || []);
-    } catch {
-      // ignore
-    } finally {
+    } else {
       setIsLoading(false);
     }
-  }, [currentOrg]);
 
-  useEffect(() => {
-    fetchOverview();
-  }, [fetchOverview]);
+    return () => {
+      isMounted = false;
+    };
+  }, [currentOrg]);
 
   if (!currentOrg || isLoading) {
     return <div style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>Loading workspace overview...</div>;
   }
-
 
   return (
     <div>

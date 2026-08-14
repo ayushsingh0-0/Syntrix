@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, Trash2, ArrowRightLeft, ShieldAlert } from 'lucide-react';
-
-import { useOrg } from '../../context/OrgContext';
-import { useToast } from '../../context/ToastContext';
+import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
+import { getErrorMessage } from '../../utils/error';
+import type { OrganizationMember } from '../../types';
 
 export const OrgSettings: React.FC = () => {
   const { currentOrg, myRole, hasPermission, refreshOrgs } = useOrg();
@@ -16,17 +16,23 @@ export const OrgSettings: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [newOwnerUserId, setNewOwnerUserId] = useState('');
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [isTransferring, setIsTransferring] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     if (currentOrg) {
-      setName(currentOrg.name);
-      setLogoUrl(currentOrg.logoUrl || '');
       api.get(`/organizations/${currentOrg.id}/members`).then((res) => {
-        setMembers(res.data.data);
+        if (isMounted) {
+          setMembers(res.data.data || []);
+        }
+      }).catch(() => {
+        // ignore
       });
     }
+    return () => {
+      isMounted = false;
+    };
   }, [currentOrg]);
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -41,8 +47,8 @@ export const OrgSettings: React.FC = () => {
       });
       showToast('success', 'Workspace settings updated successfully!');
       await refreshOrgs();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to update workspace');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to update workspace'));
     } finally {
       setIsUpdating(false);
     }
@@ -60,8 +66,8 @@ export const OrgSettings: React.FC = () => {
       });
       showToast('success', 'Organization ownership transferred successfully!');
       await refreshOrgs();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to transfer ownership');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to transfer ownership'));
     } finally {
       setIsTransferring(false);
     }
@@ -80,8 +86,8 @@ export const OrgSettings: React.FC = () => {
       showToast('success', 'Organization deleted.');
       await refreshOrgs();
       navigate('/');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to delete organization');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to delete organization'));
     }
   };
 

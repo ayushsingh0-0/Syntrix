@@ -1,8 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ToastProvider } from './context/ToastContext';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { OrgProvider } from './context/OrgContext';
+import { ToastProvider, AuthProvider, useAuth, OrgProvider } from './context';
+
 
 // Layout
 import { DashboardLayout } from './components/layout/DashboardLayout';

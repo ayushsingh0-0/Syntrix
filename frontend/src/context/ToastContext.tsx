@@ -1,19 +1,19 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
+import React, { createContext, useState, useCallback } from 'react';
+import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
-type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
-interface Toast {
+export interface Toast {
   id: string;
   type: ToastType;
   message: string;
 }
 
-interface ToastContextType {
+export interface ToastContextType {
   showToast: (type: ToastType, message: string) => void;
 }
 
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+export const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -27,59 +27,32 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, 4000);
   }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
-  const getIcon = (type: ToastType) => {
+  const getToastIcon = (type: ToastType) => {
     switch (type) {
-      case 'success':
-        return <CheckCircle2 size={18} color="var(--emerald)" />;
-      case 'error':
-        return <AlertCircle size={18} color="var(--rose)" />;
-      case 'warning':
-        return <AlertTriangle size={18} color="var(--amber)" />;
-      case 'info':
-        return <Info size={18} color="var(--cyan)" />;
+      case 'success': return <CheckCircle2 size={18} color="var(--emerald)" />;
+      case 'error': return <AlertCircle size={18} color="var(--rose)" />;
+      case 'warning': return <AlertTriangle size={18} color="var(--amber)" />;
+      case 'info': return <Info size={18} color="var(--primary)" />;
     }
   };
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          zIndex: 9999,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-          maxWidth: '400px',
-        }}
-      >
+      <div className="toast-container" aria-live="polite">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-default)',
-              boxShadow: 'var(--shadow-lg)',
-              color: 'var(--text-primary)',
-              fontSize: '0.875rem',
-              animation: 'fadeIn 0.2s ease-out',
-            }}
+            className={`toast toast-${toast.type}`}
+            role="alert"
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {getIcon(toast.type)}
-              <span>{toast.message}</span>
+              {getToastIcon(toast.type)}
+              <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>{toast.message}</span>
             </div>
             <button
               onClick={() => removeToast(toast.id)}
@@ -88,9 +61,11 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 border: 'none',
                 color: 'var(--text-muted)',
                 cursor: 'pointer',
+                padding: '2px',
                 display: 'flex',
                 alignItems: 'center',
               }}
+              aria-label="Close notification"
             >
               <X size={14} />
             </button>
@@ -99,12 +74,4 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       </div>
     </ToastContext.Provider>
   );
-};
-
-export const useToast = () => {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
-  }
-  return context;
 };

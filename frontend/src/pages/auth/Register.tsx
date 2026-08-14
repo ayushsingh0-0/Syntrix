@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, User, Mail, Lock, ArrowRight } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useAuth, useToast } from '../../context';
+import { getErrorMessage } from '../../utils/error';
 
 export const Register: React.FC = () => {
   const [name, setName] = useState('');
@@ -24,8 +24,8 @@ export const Register: React.FC = () => {
     try {
       await register(name.trim(), email.trim(), password);
       navigate('/');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Registration failed. Try another email.');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Registration failed. Try another email.'));
     } finally {
       setIsSubmitting(false);
     }

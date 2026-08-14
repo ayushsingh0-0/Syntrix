@@ -10,7 +10,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { OrgSwitcher } from './OrgSwitcher';
-import { useOrg } from '../../context/OrgContext';
+import { useOrg } from '../../context';
+
 
 interface SidebarProps {
   onOpenCreateOrgModal: () => void;

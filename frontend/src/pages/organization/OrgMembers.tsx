@@ -1,23 +1,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { UserMinus } from 'lucide-react';
-import { useOrg, type OrganizationRole } from '../../context/OrgContext';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useOrg, useAuth, useToast } from '../../context';
 import api from '../../services/api';
+import { getErrorMessage } from '../../utils/error';
+import type { OrganizationMember, OrganizationRole } from '../../types';
 
 export const OrgMembers: React.FC = () => {
   const { currentOrg, hasPermission, myRole } = useOrg();
   const { user: currentUser } = useAuth();
   const { showToast } = useToast();
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchMembers = useCallback(async () => {
     if (!currentOrg) return;
-    setIsLoading(true);
     try {
       const { data } = await api.get(`/organizations/${currentOrg.id}/members`);
-      setMembers(data.data);
+      setMembers(data.data || []);
     } catch {
       // ignore
     } finally {
@@ -26,8 +25,23 @@ export const OrgMembers: React.FC = () => {
   }, [currentOrg]);
 
   useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
+    let isMounted = true;
+    if (currentOrg) {
+      api.get(`/organizations/${currentOrg.id}/members`).then((res) => {
+        if (isMounted) {
+          setMembers(res.data.data || []);
+          setIsLoading(false);
+        }
+      }).catch(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    } else {
+      setIsLoading(false);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [currentOrg]);
 
   const handleRoleChange = async (userId: string, newRole: OrganizationRole) => {
     if (!currentOrg) return;
@@ -35,8 +49,8 @@ export const OrgMembers: React.FC = () => {
       await api.patch(`/organizations/${currentOrg.id}/members/${userId}`, { role: newRole });
       showToast('success', 'Member role updated successfully!');
       fetchMembers();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to update member role');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to update member role'));
     }
   };
 
@@ -48,8 +62,8 @@ export const OrgMembers: React.FC = () => {
       await api.delete(`/organizations/${currentOrg.id}/members/${userId}`);
       showToast('success', `${memberName} removed from workspace.`);
       fetchMembers();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to remove member');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to remove member'));
     }
   };
 
@@ -176,8 +190,6 @@ export const OrgMembers: React.FC = () => {
               })
             )}
           </tbody>
-
-
         </table>
       </div>
     </div>

@@ -11,40 +11,47 @@ import {
   ArrowLeft,
   Save,
 } from 'lucide-react';
-import { useOrg } from '../../context/OrgContext';
-import { useToast } from '../../context/ToastContext';
+import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
+import { getErrorMessage } from '../../utils/error';
+import type {
+  Project,
+  ProjectMember,
+  OrganizationMember,
+  Team,
+  ProjectStatus,
+  ProjectPriority,
+  ProjectRole,
+} from '../../types';
 
 export const ProjectDetail: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { currentOrg } = useOrg();
-
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const [project, setProject] = useState<any>(null);
-  const [members, setMembers] = useState<any[]>([]);
-  const [orgMembers, setOrgMembers] = useState<any[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
+  const [project, setProject] = useState<Project | null>(null);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [orgMembers, setOrgMembers] = useState<OrganizationMember[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'settings'>('overview');
   const [isLoading, setIsLoading] = useState(true);
 
   // Settings form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('ACTIVE');
-  const [priority, setPriority] = useState('MEDIUM');
+  const [status, setStatus] = useState<ProjectStatus>('ACTIVE');
+  const [priority, setPriority] = useState<ProjectPriority>('MEDIUM');
   const [teamId, setTeamId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Add member form state
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'LEAD' | 'MEMBER' | 'VIEWER'>('MEMBER');
+  const [selectedRole, setSelectedRole] = useState<ProjectRole>('MEMBER');
   const [isAddingMember, setIsAddingMember] = useState(false);
 
   const fetchProjectData = useCallback(async () => {
     if (!currentOrg || !projectId) return;
-    setIsLoading(true);
     try {
       const [projRes, membersRes, orgMembersRes, teamsRes] = await Promise.all([
         api.get(`/organizations/${currentOrg.id}/projects/${projectId}`),
@@ -53,7 +60,7 @@ export const ProjectDetail: React.FC = () => {
         api.get(`/organizations/${currentOrg.id}/teams`),
       ]);
 
-      const p = projRes.data.data;
+      const p: Project = projRes.data.data;
       setProject(p);
       setName(p.name);
       setDescription(p.description || '');
@@ -64,8 +71,8 @@ export const ProjectDetail: React.FC = () => {
       setMembers(membersRes.data.data || []);
       setOrgMembers(orgMembersRes.data.data || []);
       setTeams(teamsRes.data.data || []);
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Project not found');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Project not found'));
       navigate('/projects');
     } finally {
       setIsLoading(false);
@@ -73,8 +80,40 @@ export const ProjectDetail: React.FC = () => {
   }, [currentOrg, projectId, navigate, showToast]);
 
   useEffect(() => {
-    fetchProjectData();
-  }, [fetchProjectData]);
+    let isMounted = true;
+    if (currentOrg && projectId) {
+      Promise.all([
+        api.get(`/organizations/${currentOrg.id}/projects/${projectId}`),
+        api.get(`/organizations/${currentOrg.id}/projects/${projectId}/members`),
+        api.get(`/organizations/${currentOrg.id}/members`),
+        api.get(`/organizations/${currentOrg.id}/teams`),
+      ]).then(([projRes, membersRes, orgMembersRes, teamsRes]) => {
+        if (!isMounted) return;
+        const p: Project = projRes.data.data;
+        setProject(p);
+        setName(p.name);
+        setDescription(p.description || '');
+        setStatus(p.status);
+        setPriority(p.priority);
+        setTeamId(p.teamId || '');
+
+        setMembers(membersRes.data.data || []);
+        setOrgMembers(orgMembersRes.data.data || []);
+        setTeams(teamsRes.data.data || []);
+        setIsLoading(false);
+      }).catch((err: unknown) => {
+        if (!isMounted) return;
+        showToast('error', getErrorMessage(err, 'Project not found'));
+        navigate('/projects');
+      });
+    } else {
+      setIsLoading(false);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentOrg, projectId, navigate, showToast]);
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,8 +130,8 @@ export const ProjectDetail: React.FC = () => {
       });
       setProject(data.data);
       showToast('success', 'Project settings updated!');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to update project');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to update project'));
     } finally {
       setIsSaving(false);
     }
@@ -106,8 +145,8 @@ export const ProjectDetail: React.FC = () => {
       const { data } = await api.patch(`/organizations/${currentOrg.id}/projects/${projectId}/${action}`);
       setProject(data.data);
       showToast('success', `Project ${project.isArchived ? 'restored' : 'archived'}!`);
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || `Failed to ${action} project`);
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, `Failed to ${action} project`));
     }
   };
 
@@ -119,8 +158,8 @@ export const ProjectDetail: React.FC = () => {
       await api.delete(`/organizations/${currentOrg.id}/projects/${projectId}`);
       showToast('success', 'Project deleted successfully');
       navigate('/projects');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to delete project');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to delete project'));
     }
   };
 
@@ -137,14 +176,14 @@ export const ProjectDetail: React.FC = () => {
       showToast('success', 'Member added to project!');
       setSelectedUserId('');
       fetchProjectData();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to add member');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to add member'));
     } finally {
       setIsAddingMember(false);
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'LEAD' | 'MEMBER' | 'VIEWER') => {
+  const handleRoleChange = async (userId: string, newRole: ProjectRole) => {
     if (!currentOrg || !projectId) return;
     try {
       await api.patch(`/organizations/${currentOrg.id}/projects/${projectId}/members/${userId}`, {
@@ -152,8 +191,8 @@ export const ProjectDetail: React.FC = () => {
       });
       showToast('success', 'Project role updated!');
       fetchProjectData();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to update role');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to update role'));
     }
   };
 
@@ -165,8 +204,8 @@ export const ProjectDetail: React.FC = () => {
       await api.delete(`/organizations/${currentOrg.id}/projects/${projectId}/members/${userId}`);
       showToast('success', `${memberName} removed from project.`);
       fetchProjectData();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to remove member');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to remove member'));
     }
   };
 
@@ -331,7 +370,7 @@ export const ProjectDetail: React.FC = () => {
             <select
               className="input-field"
               value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as any)}
+              onChange={(e) => setSelectedRole(e.target.value as ProjectRole)}
               style={{ width: '120px' }}
             >
               <option value="MEMBER">MEMBER</option>
@@ -386,7 +425,7 @@ export const ProjectDetail: React.FC = () => {
                       <select
                         className="input-field"
                         value={m.role}
-                        onChange={(e) => handleRoleChange(m.userId, e.target.value as any)}
+                        onChange={(e) => handleRoleChange(m.userId, e.target.value as ProjectRole)}
                         style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8rem' }}
                       >
                         <option value="LEAD">LEAD</option>
@@ -432,7 +471,11 @@ export const ProjectDetail: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="input-group">
                 <label className="input-label">Status</label>
-                <select className="input-field" value={status} onChange={(e) => setStatus(e.target.value)}>
+                <select
+                  className="input-field"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as ProjectStatus)}
+                >
                   <option value="PLANNING">PLANNING</option>
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="ON_HOLD">ON_HOLD</option>
@@ -443,7 +486,11 @@ export const ProjectDetail: React.FC = () => {
 
               <div className="input-group">
                 <label className="input-label">Priority</label>
-                <select className="input-field" value={priority} onChange={(e) => setPriority(e.target.value)}>
+                <select
+                  className="input-field"
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as ProjectPriority)}
+                >
                   <option value="LOW">LOW</option>
                   <option value="MEDIUM">MEDIUM</option>
                   <option value="HIGH">HIGH</option>

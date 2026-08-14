@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Layers, UserPlus, Trash2, Crown } from 'lucide-react';
-import { useOrg } from '../../context/OrgContext';
-import { useToast } from '../../context/ToastContext';
+import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
+import { getErrorMessage } from '../../utils/error';
+import type { Team, TeamMember, TeamRole, OrganizationMember } from '../../types';
 
 interface TeamDetailModalProps {
   teamId: string | null;
@@ -11,37 +12,41 @@ interface TeamDetailModalProps {
   onRefresh: () => void;
 }
 
+interface TeamDetailResponse {
+  team: Team;
+  members: TeamMember[];
+}
+
 export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ teamId, isOpen, onClose, onRefresh }) => {
   const { currentOrg } = useOrg();
-
   const { showToast } = useToast();
-  const [details, setDetails] = useState<any>(null);
-  const [orgMembers, setOrgMembers] = useState<any[]>([]);
+  const [details, setDetails] = useState<TeamDetailResponse | null>(null);
+  const [orgMembers, setOrgMembers] = useState<OrganizationMember[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'LEAD' | 'MEMBER'>('MEMBER');
+  const [selectedRole, setSelectedRole] = useState<TeamRole>('MEMBER');
   const [isAdding, setIsAdding] = useState(false);
 
-  const fetchDetails = useCallback(async () => {
-    if (!currentOrg || !teamId) return;
-    try {
-      const [teamRes, orgMembersRes] = await Promise.all([
+  useEffect(() => {
+    let isMounted = true;
+    if (isOpen && teamId && currentOrg) {
+      Promise.all([
         api.get(`/organizations/${currentOrg.id}/teams/${teamId}`),
         api.get(`/organizations/${currentOrg.id}/members`),
-      ]);
-      setDetails(teamRes.data.data);
-      setOrgMembers(orgMembersRes.data.data);
-    } catch {
-      // ignore
+      ]).then(([teamRes, orgMembersRes]) => {
+        if (isMounted) {
+          setDetails(teamRes.data.data);
+          setOrgMembers(orgMembersRes.data.data || []);
+        }
+      }).catch((err: unknown) => {
+        if (isMounted) {
+          showToast('error', getErrorMessage(err, 'Failed to fetch team details'));
+        }
+      });
     }
-  }, [currentOrg, teamId]);
-
-  useEffect(() => {
-    if (isOpen && teamId) {
-      fetchDetails();
-    }
-  }, [isOpen, teamId, fetchDetails]);
-
-  if (!isOpen || !details) return null;
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, teamId, currentOrg, showToast]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,28 +60,30 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ teamId, isOpen
       });
       showToast('success', 'Member added to team!');
       setSelectedUserId('');
-      fetchDetails();
+      const teamRes = await api.get(`/organizations/${currentOrg.id}/teams/${teamId}`);
+      setDetails(teamRes.data.data);
       onRefresh();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to add member to team');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to add member to team'));
     } finally {
       setIsAdding(false);
     }
   };
 
-  const handleToggleRole = async (userId: string, currentRole: 'LEAD' | 'MEMBER') => {
+  const handleToggleRole = async (userId: string, currentRole: TeamRole) => {
     if (!currentOrg || !teamId) return;
-    const newRole = currentRole === 'LEAD' ? 'MEMBER' : 'LEAD';
+    const newRole: TeamRole = currentRole === 'LEAD' ? 'MEMBER' : 'LEAD';
 
     try {
       await api.patch(`/organizations/${currentOrg.id}/teams/${teamId}/members/${userId}`, {
         role: newRole,
       });
       showToast('success', `Member role updated to ${newRole}`);
-      fetchDetails();
+      const teamRes = await api.get(`/organizations/${currentOrg.id}/teams/${teamId}`);
+      setDetails(teamRes.data.data);
       onRefresh();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to update role');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to update role'));
     }
   };
 
@@ -87,15 +94,16 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ teamId, isOpen
     try {
       await api.delete(`/organizations/${currentOrg.id}/teams/${teamId}/members/${userId}`);
       showToast('success', `${memberName} removed from team.`);
-      fetchDetails();
+      const teamRes = await api.get(`/organizations/${currentOrg.id}/teams/${teamId}`);
+      setDetails(teamRes.data.data);
       onRefresh();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to remove member');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to remove member'));
     }
   };
 
   const handleDeleteTeam = async () => {
-    if (!currentOrg || !teamId) return;
+    if (!currentOrg || !teamId || !details) return;
     if (!confirm(`Are you sure you want to delete the "${details.team.name}" team?`)) return;
 
     try {
@@ -103,12 +111,14 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ teamId, isOpen
       showToast('success', 'Team deleted successfully');
       onRefresh();
       onClose();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to delete team');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to delete team'));
     }
   };
 
-  const existingMemberUserIds = details.members.map((m: any) => m.userId);
+  if (!isOpen || !details) return null;
+
+  const existingMemberUserIds = details.members.map((m) => m.userId);
   const eligibleOrgMembers = orgMembers.filter((om) => !existingMemberUserIds.includes(om.userId));
 
   return (
@@ -167,7 +177,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ teamId, isOpen
             <select
               className="input-field"
               value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as 'LEAD' | 'MEMBER')}
+              onChange={(e) => setSelectedRole(e.target.value as TeamRole)}
               style={{ width: '110px' }}
             >
               <option value="MEMBER">MEMBER</option>
@@ -188,7 +198,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ teamId, isOpen
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {details.members.map((m: any) => (
+            {details.members.map((m) => (
               <div
                 key={m.id}
                 style={{

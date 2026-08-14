@@ -1,21 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import api from '../services/api';
-import { useToast } from './ToastContext';
+import { useToast } from './useToast';
+import type { User } from '../types';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'ADMIN' | 'USER';
-  isEmailVerified: boolean;
-  bio: string | null;
-  avatarUrl: string | null;
-  phone: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   accessToken: string | null;
   isLoading: boolean;
@@ -26,7 +14,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
@@ -50,21 +38,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let isMounted = true;
     const initAuth = async () => {
       const token = localStorage.getItem('syntrix_access_token');
       if (token) {
         try {
           const { data } = await api.get('/users/me');
-          setUser(data.data);
-          localStorage.setItem('syntrix_user', JSON.stringify(data.data));
+          if (isMounted) {
+            setUser(data.data);
+            localStorage.setItem('syntrix_user', JSON.stringify(data.data));
+          }
         } catch {
-          setUser(null);
-          setAccessToken(null);
-          localStorage.removeItem('syntrix_user');
-          localStorage.removeItem('syntrix_access_token');
+          if (isMounted) {
+            setUser(null);
+            setAccessToken(null);
+            localStorage.removeItem('syntrix_user');
+            localStorage.removeItem('syntrix_access_token');
+          }
         }
       }
-      setIsLoading(false);
+      if (isMounted) {
+        setIsLoading(false);
+      }
     };
 
     initAuth();
@@ -76,7 +71,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     window.addEventListener('syntrix_session_expired', handleSessionExpired);
-    return () => window.removeEventListener('syntrix_session_expired', handleSessionExpired);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('syntrix_session_expired', handleSessionExpired);
+    };
   }, [showToast]);
 
   const login = async (email: string, pass: string) => {
@@ -118,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUser = (updatedData: Partial<User>) => {
     if (user) {
-      const merged = { ...user, ...updatedData };
+      const merged = { ...user, ...updatedData } as User;
       setUser(merged);
       localStorage.setItem('syntrix_user', JSON.stringify(merged));
     }
@@ -140,12 +138,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

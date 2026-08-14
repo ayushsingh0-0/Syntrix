@@ -1,14 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Building2, ShieldCheck, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react';
 import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { useOrg } from '../../context/OrgContext';
-import { useToast } from '../../context/ToastContext';
+import { useAuth, useOrg, useToast } from '../../context';
+import { getErrorMessage } from '../../utils/error';
+import type { Invitation } from '../../types';
 
 export const InviteLanding: React.FC = () => {
   const { token } = useParams<{ token: string }>();
-  const [preview, setPreview] = useState<any>(null);
+  const [preview, setPreview] = useState<Invitation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
@@ -17,21 +17,27 @@ export const InviteLanding: React.FC = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const fetchPreview = useCallback(async () => {
-    if (!token) return;
-    try {
-      const { data } = await api.get(`/invitations/${token}`);
-      setPreview(data.data);
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Invalid or expired invitation link');
-    } finally {
+  useEffect(() => {
+    let isMounted = true;
+    if (token) {
+      api.get(`/invitations/${token}`).then((res) => {
+        if (isMounted) {
+          setPreview(res.data.data);
+          setIsLoading(false);
+        }
+      }).catch((err: unknown) => {
+        if (isMounted) {
+          showToast('error', getErrorMessage(err, 'Invalid or expired invitation link'));
+          setIsLoading(false);
+        }
+      });
+    } else {
       setIsLoading(false);
     }
+    return () => {
+      isMounted = false;
+    };
   }, [token, showToast]);
-
-  useEffect(() => {
-    fetchPreview();
-  }, [fetchPreview]);
 
   const handleAccept = async () => {
     if (!user) {
@@ -48,8 +54,8 @@ export const InviteLanding: React.FC = () => {
       await refreshOrgs();
       switchOrg(data.data.organization.id);
       setTimeout(() => navigate('/'), 1200);
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to accept invitation');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to accept invitation'));
     } finally {
       setIsAccepting(false);
     }

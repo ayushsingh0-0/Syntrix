@@ -10,16 +10,17 @@ import {
   ArrowRight,
   Layers,
 } from 'lucide-react';
-import { useOrg } from '../../context/OrgContext';
+import { useOrg, useToast } from '../../context';
 import { CreateProjectModal } from '../../components/modals/CreateProjectModal';
-import { useToast } from '../../context/ToastContext';
 import api from '../../services/api';
+import { getErrorMessage } from '../../utils/error';
+import type { Project, ProjectStatus, ProjectPriority } from '../../types';
 
 export const ProjectList: React.FC = () => {
   const { currentOrg, hasPermission } = useOrg();
   const { showToast } = useToast();
 
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
@@ -27,11 +28,8 @@ export const ProjectList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-
-
   const fetchProjects = useCallback(async () => {
     if (!currentOrg) return;
-    setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchQuery.trim()) params.append('q', searchQuery.trim());
@@ -49,8 +47,30 @@ export const ProjectList: React.FC = () => {
   }, [currentOrg, searchQuery, statusFilter, priorityFilter, showArchived]);
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    let isMounted = true;
+    if (currentOrg) {
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.append('q', searchQuery.trim());
+      if (statusFilter) params.append('status', statusFilter);
+      if (priorityFilter) params.append('priority', priorityFilter);
+      if (showArchived) params.append('isArchived', 'true');
+
+      api.get(`/organizations/${currentOrg.id}/projects?${params.toString()}`).then((res) => {
+        if (isMounted) {
+          setProjects(res.data.data || []);
+          setIsLoading(false);
+        }
+      }).catch(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    } else {
+      setIsLoading(false);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentOrg, searchQuery, statusFilter, priorityFilter, showArchived]);
 
   const handleArchiveToggle = async (projectId: string, isArchived: boolean, e: React.MouseEvent) => {
     e.preventDefault();
@@ -62,12 +82,12 @@ export const ProjectList: React.FC = () => {
       await api.patch(`/organizations/${currentOrg.id}/projects/${projectId}/${action}`);
       showToast('success', `Project ${isArchived ? 'restored' : 'archived'} successfully!`);
       fetchProjects();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || `Failed to ${action} project`);
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, `Failed to ${action} project`));
     }
   };
 
-  const getPriorityBadgeClass = (priority: string) => {
+  const getPriorityBadgeClass = (priority: ProjectPriority) => {
     switch (priority) {
       case 'URGENT': return 'badge-rose';
       case 'HIGH': return 'badge-amber';
@@ -77,7 +97,7 @@ export const ProjectList: React.FC = () => {
     }
   };
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusBadgeClass = (status: ProjectStatus) => {
     switch (status) {
       case 'ACTIVE': return 'badge-emerald';
       case 'PLANNING': return 'badge-cyan';
@@ -176,7 +196,6 @@ export const ProjectList: React.FC = () => {
         </div>
       ) : projects.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px 24px' }}>
-
           <FolderKanban size={40} color="var(--primary)" style={{ margin: '0 auto 14px auto' }} />
           <h3 style={{ fontSize: '1.2rem', marginBottom: '6px' }}>No projects found</h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '20px' }}>

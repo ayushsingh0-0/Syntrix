@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { User, Mail, Phone, Lock, Save, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Lock, Save, ShieldCheck, AlertTriangle } from 'lucide-react';
 import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useAuth, useToast } from '../../context';
+import { getErrorMessage } from '../../utils/error';
 
 export const Profile: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -33,8 +33,8 @@ export const Profile: React.FC = () => {
       });
       updateUser(data.data);
       showToast('success', 'Profile updated successfully!');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to update profile');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to update profile'));
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -61,8 +61,8 @@ export const Profile: React.FC = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to change password');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to change password'));
     } finally {
       setIsUpdatingPassword(false);
     }
@@ -73,8 +73,8 @@ export const Profile: React.FC = () => {
     try {
       await api.post('/auth/resend-verification', { email: user?.email });
       showToast('success', 'Verification email sent! Check your inbox.');
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to send verification email');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to send verification email'));
     } finally {
       setIsResendingEmail(false);
     }
@@ -155,7 +155,7 @@ export const Profile: React.FC = () => {
                   color: 'var(--text-secondary)',
                 }}
               >
-                <User size={32} />
+                <UserIcon size={32} />
               </div>
             )}
             <div style={{ flex: 1 }}>
@@ -182,7 +182,7 @@ export const Profile: React.FC = () => {
                   required
                   style={{ paddingLeft: '38px' }}
                 />
-                <User size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <UserIcon size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               </div>
             </div>
 

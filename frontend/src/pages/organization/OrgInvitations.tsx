@@ -1,16 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { UserPlus, Mail, RotateCw, Trash2, Copy, Check, Clock, Plus, X } from 'lucide-react';
-import { useOrg, type OrganizationRole } from '../../context/OrgContext';
-import { useToast } from '../../context/ToastContext';
+import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
+import { getErrorMessage } from '../../utils/error';
+import type { Invitation, OrganizationRole } from '../../types';
 
 export const OrgInvitations: React.FC = () => {
   const { currentOrg, hasPermission, myRole } = useOrg();
   const { showToast } = useToast();
-  const [invites, setInvites] = useState<any[]>([]);
+  const [invites, setInvites] = useState<Invitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -21,10 +20,9 @@ export const OrgInvitations: React.FC = () => {
 
   const fetchInvites = useCallback(async () => {
     if (!currentOrg) return;
-    setIsLoading(true);
     try {
       const { data } = await api.get(`/organizations/${currentOrg.id}/invitations`);
-      setInvites(data.data);
+      setInvites(data.data || []);
     } catch {
       // ignore
     } finally {
@@ -33,8 +31,23 @@ export const OrgInvitations: React.FC = () => {
   }, [currentOrg]);
 
   useEffect(() => {
-    fetchInvites();
-  }, [fetchInvites]);
+    let isMounted = true;
+    if (currentOrg) {
+      api.get(`/organizations/${currentOrg.id}/invitations`).then((res) => {
+        if (isMounted) {
+          setInvites(res.data.data || []);
+          setIsLoading(false);
+        }
+      }).catch(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    } else {
+      setIsLoading(false);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [currentOrg]);
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +62,8 @@ export const OrgInvitations: React.FC = () => {
       showToast('success', `Invitation generated for ${inviteEmail}!`);
       setGeneratedLink(data.data.invitationLink || `${window.location.origin}/invite/${data.data.token}`);
       fetchInvites();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to send invitation');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to send invitation'));
     } finally {
       setIsSubmitting(false);
     }
@@ -66,8 +79,8 @@ export const OrgInvitations: React.FC = () => {
         showToast('info', 'New invitation link copied to clipboard!');
       }
       fetchInvites();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to resend invite');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to resend invite'));
     }
   };
 
@@ -79,8 +92,8 @@ export const OrgInvitations: React.FC = () => {
       await api.delete(`/organizations/${currentOrg.id}/invitations/${invitationId}`);
       showToast('success', `Invitation for ${email} revoked.`);
       fetchInvites();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to revoke invite');
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to revoke invite'));
     }
   };
 
@@ -133,7 +146,6 @@ export const OrgInvitations: React.FC = () => {
                 </td>
               </tr>
             ) : (
-
               invites.map((inv) => (
                 <tr key={inv.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <td style={{ padding: '16px 20px', fontWeight: '600', fontSize: '0.9rem' }}>

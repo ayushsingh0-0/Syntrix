@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context';
+import { getErrorMessage } from '../../utils/error';
 
 export const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -11,26 +12,30 @@ export const VerifyEmail: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const { refreshUser } = useAuth();
 
-  const verify = useCallback(async () => {
+  useEffect(() => {
+    let isMounted = true;
     if (!token) {
       setStatus('error');
       setErrorMessage('No verification token provided in URL.');
       return;
     }
 
-    try {
-      await api.get(`/auth/verify-email?token=${token}`);
-      setStatus('success');
-      await refreshUser();
-    } catch (err: any) {
-      setStatus('error');
-      setErrorMessage(err.response?.data?.message || 'Verification token is invalid or expired.');
-    }
-  }, [token, refreshUser]);
+    api.get(`/auth/verify-email?token=${token}`).then(() => {
+      if (isMounted) {
+        setStatus('success');
+        refreshUser();
+      }
+    }).catch((err: unknown) => {
+      if (isMounted) {
+        setStatus('error');
+        setErrorMessage(getErrorMessage(err, 'Verification token is invalid or expired.'));
+      }
+    });
 
-  useEffect(() => {
-    verify();
-  }, [verify]);
+    return () => {
+      isMounted = false;
+    };
+  }, [token, refreshUser]);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
