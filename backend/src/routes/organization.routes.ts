@@ -138,6 +138,11 @@ router.delete(
   asyncHandler(revokeInvite)
 );
 
+// Team Management
+import teamRoutes from './team.routes';
+router.use('/:id/teams', authenticate, asyncHandler(requireOrgMember), teamRoutes);
+
 export default router;
+
 
 

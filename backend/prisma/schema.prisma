@@ -31,6 +31,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   organizationMemberships OrganizationMember[]
   sentInvitations         Invitation[]
+  teamMemberships         TeamMember[]
 }
 
 model RefreshToken {
@@ -104,6 +105,7 @@ model Organization {
   updatedAt   DateTime             @updatedAt
   members     OrganizationMember[]
   invitations Invitation[]
+  teams       Team[]
 }
 
 model OrganizationMember {
@@ -144,6 +146,40 @@ model Invitation {
 
   @@index([organizationId, email])
 }
+
+enum TeamRole {
+  LEAD
+  MEMBER
+}
+
+model Team {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String       @db.VarChar(100)
+  description    String?      @db.VarChar(500)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        TeamMember[]
+
+  @@index([organizationId, name])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      TeamRole @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
 
 
 
