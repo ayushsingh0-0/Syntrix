@@ -14,3 +14,19 @@ export const validate = (schema: z.ZodType) => {
     next();
   };
 };
+
+export const validateQuery = (schema: z.ZodType) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const result = schema.safeParse(req.query);
+
+    if (!result.success) {
+      next(result.error);
+      return;
+    }
+
+    res.locals.query = result.data;
+    next();
+  };
+};
+
+

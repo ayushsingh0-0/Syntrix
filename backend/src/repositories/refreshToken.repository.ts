@@ -40,3 +40,35 @@ export const revokeAllUserTokens = async (userId: string) => {
     },
   });
 };
+
+export const findActiveSessionsByUserId = async (userId: string) => {
+  return prisma.refreshToken.findMany({
+    where: {
+      userId,
+      isRevoked: false,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    select: {
+      id: true,
+      token: true,
+      expiresAt: true,
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+};
+
+export const findSessionByIdAndUserId = async (id: string, userId: string) => {
+  return prisma.refreshToken.findFirst({
+    where: {
+      id,
+      userId,
+      isRevoked: false,
+    },
+  });
+};
+
