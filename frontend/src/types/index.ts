@@ -125,6 +125,47 @@ export interface ApiErrorResponse {
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'CANCELLED';
 
+export interface Label {
+  id: string;
+  organizationId: string;
+  name: string;
+  color: string;
+  description?: string | null;
+  createdAt: string;
+}
+
+export type DependencyType = 'BLOCKS' | 'BLOCKED_BY' | 'RELATES_TO';
+
+export interface TaskDependency {
+  id: string;
+  taskId: string;
+  dependsOnTaskId: string;
+  type: DependencyType;
+  dependsOnTask?: {
+    id: string;
+    key: string;
+    title: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+  };
+  task?: {
+    id: string;
+    key: string;
+    title: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+  };
+  createdAt: string;
+}
+
+export interface TaskWatcher {
+  id: string;
+  taskId: string;
+  userId: string;
+  user: User;
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   projectId: string;
@@ -142,6 +183,10 @@ export interface Task {
   estimatedHours?: number | null;
   assignee?: User | null;
   reporter?: User | null;
+  labels?: { label: Label }[];
+  watchers?: TaskWatcher[];
+  dependencies?: TaskDependency[];
+  blockingTasks?: TaskDependency[];
   createdAt: string;
   updatedAt: string;
 }
@@ -168,4 +213,5 @@ export interface Board {
   createdAt: string;
   updatedAt: string;
 }
+
 

@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   Save,
   Kanban,
+  ListFilter,
 } from 'lucide-react';
 import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
@@ -253,6 +254,10 @@ export const ProjectDetail: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
+            <Link to={`/projects/${project.id}/tasks`} className="btn btn-secondary btn-sm">
+              <ListFilter size={14} />
+              <span>Tasks</span>
+            </Link>
             <Link to={`/projects/${project.id}/board`} className="btn btn-primary btn-sm">
               <Kanban size={14} />
               <span>Open Kanban Board</span>
@@ -262,6 +267,7 @@ export const ProjectDetail: React.FC = () => {
               <span>{project.isArchived ? 'Restore' : 'Archive'}</span>
             </button>
           </div>
+
 
         </div>
       </div>

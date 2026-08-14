@@ -8,11 +8,14 @@ import {
   X,
   ArrowLeft,
   User as UserIcon,
+  ListFilter,
 } from 'lucide-react';
 import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
 import { getErrorMessage } from '../../utils/error';
+import { TaskDetailDrawer } from '../../components/tasks/TaskDetailDrawer';
 import type {
+
   Board,
   TaskPriority,
   Project,
@@ -29,7 +32,9 @@ export const ProjectBoard: React.FC = () => {
   const [boards, setBoards] = useState<Board[]>([]);
   const [activeBoard, setActiveBoard] = useState<Board | null>(null);
   const [orgMembers, setOrgMembers] = useState<OrganizationMember[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -312,12 +317,18 @@ export const ProjectBoard: React.FC = () => {
 
 
         <div style={{ display: 'flex', gap: '10px' }}>
+          <Link to={`/projects/${project.id}/tasks`} className="btn btn-secondary btn-sm">
+            <ListFilter size={14} />
+            <span>List View</span>
+          </Link>
+
           {hasPermission('PROJECT_UPDATE') && (
             <button className="btn btn-secondary btn-sm" onClick={() => setIsColumnModalOpen(true)}>
               <Plus size={14} />
               <span>Add Column</span>
             </button>
           )}
+
 
           <button
             className="btn btn-primary btn-sm"
@@ -483,11 +494,14 @@ export const ProjectBoard: React.FC = () => {
                   <div
                     key={task.id}
                     className="card"
+                    onClick={() => setSelectedTaskId(task.id)}
                     style={{
                       padding: '12px',
                       background: 'var(--bg-card)',
                       border: '1px solid var(--border-subtle)',
                       boxShadow: 'var(--shadow-sm)',
+                      cursor: 'pointer',
+                      transition: 'transform 0.15s ease, border-color 0.15s ease',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -585,7 +599,11 @@ export const ProjectBoard: React.FC = () => {
                       <select
                         className="input-field"
                         value={task.columnId || ''}
-                        onChange={(e) => handleMoveTask(task.id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleMoveTask(task.id, e.target.value);
+                        }}
                         style={{
                           width: 'auto',
                           padding: '2px 6px',
@@ -603,6 +621,7 @@ export const ProjectBoard: React.FC = () => {
                     </div>
                   </div>
                 ))}
+
 
                 {/* Inline Quick Task Creator */}
                 {addingTaskInColumnId === column.id ? (
@@ -851,6 +870,17 @@ export const ProjectBoard: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Task Detail Drawer */}
+      {selectedTaskId && (
+        <TaskDetailDrawer
+          taskId={selectedTaskId}
+          projectId={project.id}
+          onClose={() => setSelectedTaskId(null)}
+          onTaskUpdated={fetchBoardData}
+          onTaskDeleted={fetchBoardData}
+        />
       )}
     </div>
   );

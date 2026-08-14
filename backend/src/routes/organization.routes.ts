@@ -146,7 +146,16 @@ router.use('/:id/teams', authenticate, asyncHandler(requireOrgMember), teamRoute
 import projectRoutes from './project.routes';
 router.use('/:id/projects', authenticate, asyncHandler(requireOrgMember), projectRoutes);
 
+// Label Management
+import { TaskController } from '../controllers/task.controller';
+const labelController = new TaskController();
+router.get('/:id/labels', authenticate, asyncHandler(requireOrgMember), asyncHandler(labelController.getLabels));
+router.post('/:id/labels', authenticate, asyncHandler(requireOrgMember), requireOrgPermission(OrgPermission.PROJECT_UPDATE), asyncHandler(labelController.createLabel));
+router.put('/:id/labels/:labelId', authenticate, asyncHandler(requireOrgMember), requireOrgPermission(OrgPermission.PROJECT_UPDATE), asyncHandler(labelController.updateLabel));
+router.delete('/:id/labels/:labelId', authenticate, asyncHandler(requireOrgMember), requireOrgPermission(OrgPermission.PROJECT_UPDATE), asyncHandler(labelController.deleteLabel));
+
 export default router;
+
 
 
 

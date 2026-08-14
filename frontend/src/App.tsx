@@ -24,6 +24,8 @@ import { TeamList } from './pages/teams/TeamList';
 import { ProjectList } from './pages/projects/ProjectList';
 import { ProjectDetail } from './pages/projects/ProjectDetail';
 import { ProjectBoard } from './pages/projects/ProjectBoard';
+import { ProjectTaskList } from './pages/projects/ProjectTaskList';
+
 
 
 // Public Route Guard (Redirect to home if already logged in)
@@ -80,7 +82,9 @@ export function App() {
                 <Route path="/projects" element={<ProjectList />} />
                 <Route path="/projects/:projectId" element={<ProjectDetail />} />
                 <Route path="/projects/:projectId/board" element={<ProjectBoard />} />
+                <Route path="/projects/:projectId/tasks" element={<ProjectTaskList />} />
               </Route>
+
 
 
               {/* Catch-all redirect */}
