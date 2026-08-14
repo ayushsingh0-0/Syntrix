@@ -1,0 +1,128 @@
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  FolderKanban,
+  Users,
+  UserPlus,
+  Settings,
+  Layers,
+  Sparkles,
+} from 'lucide-react';
+import { OrgSwitcher } from './OrgSwitcher';
+import { useOrg } from '../../context/OrgContext';
+
+interface SidebarProps {
+  onOpenCreateOrgModal: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateOrgModal }) => {
+  const { hasPermission } = useOrg();
+
+
+  const navItems = [
+    { label: 'Overview', to: '/', icon: <LayoutDashboard size={18} /> },
+    { label: 'Projects', to: '/projects', icon: <FolderKanban size={18} /> },
+    { label: 'Teams', to: '/organization/teams', icon: <Layers size={18} /> },
+    { label: 'Members', to: '/organization/members', icon: <Users size={18} /> },
+    {
+      label: 'Invitations',
+      to: '/organization/invitations',
+      icon: <UserPlus size={18} />,
+      hide: !hasPermission('MEMBER_INVITE'),
+    },
+    {
+      label: 'Settings',
+      to: '/organization/settings',
+      icon: <Settings size={18} />,
+      hide: !hasPermission('ORG_UPDATE'),
+    },
+  ];
+
+  return (
+    <aside
+      style={{
+        width: 'var(--sidebar-width)',
+        height: '100vh',
+        background: 'var(--bg-surface)',
+        borderRight: '1px solid var(--border-subtle)',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        zIndex: 50,
+      }}
+    >
+      {/* Brand Header */}
+      <div
+        style={{
+          padding: '20px 20px 14px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}
+      >
+        <div
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: 'var(--radius-md)',
+            background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 16px var(--primary-glow)',
+          }}
+        >
+          <Sparkles size={18} color="#fff" />
+        </div>
+        <span style={{ fontSize: '1.2rem', fontWeight: '800', letterSpacing: '-0.03em', color: '#fff' }}>
+          SYNTRIX
+        </span>
+      </div>
+
+      {/* Org Switcher */}
+      <div style={{ padding: '0 16px 16px 16px' }}>
+        <OrgSwitcher onOpenCreateModal={onOpenCreateOrgModal} />
+      </div>
+
+      {/* Navigation */}
+      <nav style={{ flex: 1, padding: '0 12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-muted)', padding: '8px 12px', textTransform: 'uppercase' }}>
+          Workspace Menu
+        </div>
+        {navItems
+          .filter((item) => !item.hide)
+          .map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              style={({ isActive }) => ({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '9px 14px',
+                borderRadius: 'var(--radius-md)',
+                color: isActive ? '#fff' : 'var(--text-secondary)',
+                background: isActive ? 'var(--primary-light)' : 'transparent',
+                border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
+                fontSize: '0.875rem',
+                fontWeight: isActive ? '700' : '500',
+                transition: 'all 0.15s ease',
+              })}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+      </nav>
+
+      {/* Footer Info */}
+      <div style={{ padding: '16px', borderTop: '1px solid var(--border-subtle)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        <div>Syntrix Platform v1.0.0</div>
+        <div style={{ fontSize: '0.7rem' }}>Multi-Tenant Cloud</div>
+      </div>
+    </aside>
+  );
+};
