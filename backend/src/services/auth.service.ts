@@ -11,9 +11,16 @@ import { generateAccessToken } from '../utils/jwt';
 import { generateOpaqueToken, hashToken } from '../utils/token';
 import { ApiError } from '../utils/ApiError';
 import { SafeUser } from '../types/user.types';
+import { logAuthEvent } from './audit.service';
+import { AuthAuditEvent } from '../generated/prisma/client';
 import prisma from '../config/prisma';
 
-export const registerUser = async (name: string, email: string, password: string) => {
+export type AuthContext = {
+  ipAddress?: string;
+  userAgent?: string;
+};
+
+export const registerUser = async (name: string, email: string, password: string, context?: AuthContext) => {
   const existingUser = await findUserByEmail(email);
   if (existingUser) {
     throw new ApiError(409, 'User already exists');
@@ -28,6 +35,14 @@ export const registerUser = async (name: string, email: string, password: string
   await createEmailVerificationToken(user.id, tokenHash, expiresAt);
 
   console.log(`[AUTH] Email verification token generated for ${user.email}: ${rawVerificationToken}`);
+
+  await logAuthEvent({
+    event: AuthAuditEvent.REGISTER_SUCCESS,
+    userId: user.id,
+    email: user.email,
+    ipAddress: context?.ipAddress,
+    userAgent: context?.userAgent,
+  });
 
   const safeUser: SafeUser = {
     id: user.id,
@@ -45,15 +60,29 @@ export const registerUser = async (name: string, email: string, password: string
   };
 };
 
-
-export const loginUser = async (email: string, password: string) => {
+export const loginUser = async (email: string, password: string, context?: AuthContext) => {
   const user = await findUserByEmail(email);
   if (!user) {
+    await logAuthEvent({
+      event: AuthAuditEvent.LOGIN_FAILED,
+      email,
+      ipAddress: context?.ipAddress,
+      userAgent: context?.userAgent,
+      metadata: { reason: 'User not found' },
+    });
     throw new ApiError(401, 'Invalid email or password');
   }
 
   const isPasswordValid = await comparePassword(password, user.password);
   if (!isPasswordValid) {
+    await logAuthEvent({
+      event: AuthAuditEvent.LOGIN_FAILED,
+      userId: user.id,
+      email: user.email,
+      ipAddress: context?.ipAddress,
+      userAgent: context?.userAgent,
+      metadata: { reason: 'Invalid password' },
+    });
     throw new ApiError(401, 'Invalid email or password');
   }
 
@@ -66,10 +95,18 @@ export const loginUser = async (email: string, password: string) => {
 
   const refreshToken = await createRefreshToken(user.id, tokenString, expiresAt);
 
+  await logAuthEvent({
+    event: AuthAuditEvent.LOGIN_SUCCESS,
+    userId: user.id,
+    email: user.email,
+    ipAddress: context?.ipAddress,
+    userAgent: context?.userAgent,
+  });
+
   return { accessToken, refreshToken: refreshToken.token, user: userData };
 };
 
-export const refreshUserToken = async (tokenString: string) => {
+export const refreshUserToken = async (tokenString: string, context?: AuthContext) => {
   const tokenRecord = await findRefreshToken(tokenString);
 
   if (!tokenRecord) {
@@ -78,6 +115,14 @@ export const refreshUserToken = async (tokenString: string) => {
 
   // Reuse detection: If token is already revoked, it's compromised. Nuke all sessions.
   if (tokenRecord.isRevoked) {
+    await logAuthEvent({
+      event: AuthAuditEvent.TOKEN_REUSE_DETECTED,
+      userId: tokenRecord.userId,
+      ipAddress: context?.ipAddress,
+      userAgent: context?.userAgent,
+      metadata: { tokenId: tokenRecord.id },
+    });
+
     await revokeAllUserTokens(tokenRecord.userId);
     throw new ApiError(401, 'Token reused - all sessions revoked for security');
   }
@@ -107,21 +152,34 @@ export const refreshUserToken = async (tokenString: string) => {
   return { accessToken: newAccessToken, refreshToken: newRefreshToken.token };
 };
 
-export const logoutUser = async (tokenString: string) => {
+export const logoutUser = async (tokenString: string, context?: AuthContext) => {
   const tokenRecord = await findRefreshToken(tokenString);
   if (tokenRecord) {
+    await logAuthEvent({
+      event: AuthAuditEvent.LOGOUT,
+      userId: tokenRecord.userId,
+      ipAddress: context?.ipAddress,
+      userAgent: context?.userAgent,
+    });
     await revokeRefreshToken(tokenRecord.id);
   }
 };
 
-export const logoutAllSessions = async (userId: string) => {
+export const logoutAllSessions = async (userId: string, context?: AuthContext) => {
+  await logAuthEvent({
+    event: AuthAuditEvent.LOGOUT_ALL,
+    userId,
+    ipAddress: context?.ipAddress,
+    userAgent: context?.userAgent,
+  });
   await revokeAllUserTokens(userId);
 };
 
 export const changeUserPassword = async (
   userId: string,
   currentPassword: string,
-  newPassword: string
+  newPassword: string,
+  context?: AuthContext
 ) => {
   const user = await findUserById(userId);
   if (!user) {
@@ -138,9 +196,17 @@ export const changeUserPassword = async (
 
   // Security: Invalidate all existing sessions after password change
   await revokeAllUserTokens(userId);
+
+  await logAuthEvent({
+    event: AuthAuditEvent.PASSWORD_CHANGED,
+    userId: user.id,
+    email: user.email,
+    ipAddress: context?.ipAddress,
+    userAgent: context?.userAgent,
+  });
 };
 
-export const forgotPassword = async (email: string) => {
+export const forgotPassword = async (email: string, context?: AuthContext) => {
   const user = await findUserByEmail(email);
 
   // Prevent email enumeration: always return success message regardless of existence
@@ -161,6 +227,14 @@ export const forgotPassword = async (email: string) => {
 
   console.log(`[AUTH] Password reset token generated for ${user.email}: ${rawToken}`);
 
+  await logAuthEvent({
+    event: AuthAuditEvent.PASSWORD_RESET_REQUESTED,
+    userId: user.id,
+    email: user.email,
+    ipAddress: context?.ipAddress,
+    userAgent: context?.userAgent,
+  });
+
   return {
     message: 'If an account with that email exists, a password reset link has been sent.',
     // Included in response for development convenience
@@ -168,7 +242,7 @@ export const forgotPassword = async (email: string) => {
   };
 };
 
-export const resetUserPassword = async (rawToken: string, newPassword: string) => {
+export const resetUserPassword = async (rawToken: string, newPassword: string, context?: AuthContext) => {
   const tokenHash = hashToken(rawToken);
   const resetRecord = await findPasswordResetTokenByHash(tokenHash);
 
@@ -189,9 +263,16 @@ export const resetUserPassword = async (rawToken: string, newPassword: string) =
 
   // Security: Revoke all active sessions
   await revokeAllUserTokens(resetRecord.userId);
+
+  await logAuthEvent({
+    event: AuthAuditEvent.PASSWORD_RESET_COMPLETED,
+    userId: resetRecord.userId,
+    ipAddress: context?.ipAddress,
+    userAgent: context?.userAgent,
+  });
 };
 
-export const verifyUserEmail = async (rawToken: string) => {
+export const verifyUserEmail = async (rawToken: string, context?: AuthContext) => {
   const tokenHash = hashToken(rawToken);
   const tokenRecord = await findEmailVerificationTokenByHash(tokenHash);
 
@@ -206,6 +287,13 @@ export const verifyUserEmail = async (rawToken: string) => {
 
   await markEmailAsVerified(tokenRecord.userId);
   await deleteEmailVerificationTokensByUserId(tokenRecord.userId);
+
+  await logAuthEvent({
+    event: AuthAuditEvent.EMAIL_VERIFIED,
+    userId: tokenRecord.userId,
+    ipAddress: context?.ipAddress,
+    userAgent: context?.userAgent,
+  });
 };
 
 export const resendVerificationEmail = async (email: string) => {
@@ -234,5 +322,6 @@ export const resendVerificationEmail = async (email: string) => {
     ...(process.env.NODE_ENV !== 'production' && { debugVerificationToken: rawToken }),
   };
 };
+
 
 

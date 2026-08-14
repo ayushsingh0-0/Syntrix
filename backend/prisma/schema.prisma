@@ -56,4 +56,29 @@ model EmailVerificationToken {
   createdAt DateTime @default(now())
 }
 
+enum AuthAuditEvent {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  REGISTER_SUCCESS
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  EMAIL_VERIFIED
+  TOKEN_REUSE_DETECTED
+  LOGOUT
+  LOGOUT_ALL
+}
+
+model AuthAuditLog {
+  id        String         @id @default(cuid())
+  event     AuthAuditEvent
+  userId    String?
+  email     String?
+  ipAddress String?
+  userAgent String?        @db.VarChar(500)
+  metadata  Json?
+  createdAt DateTime       @default(now())
+}
+
+
 
