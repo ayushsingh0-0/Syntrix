@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   X,
   Eye,
@@ -12,8 +12,15 @@ import {
   Send,
   CornerDownRight,
   Edit2,
+  Paperclip,
+  UploadCloud,
+  FileText,
+  FileCode,
+  FileArchive,
+  File as FileGeneric,
+  Download,
+  Image as ImageIcon,
 } from 'lucide-react';
-
 import { useOrg, useToast, useAuth } from '../../context';
 import api from '../../services/api';
 import { getErrorMessage } from '../../utils/error';
@@ -27,6 +34,7 @@ import type {
   DependencyType,
   Comment,
   ActivityLog,
+  Attachment,
 } from '../../types';
 
 interface TaskDetailDrawerProps {
@@ -80,10 +88,11 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#3b82f6');
 
-  // Comments & Activity Timeline State
-  const [activeBottomTab, setActiveBottomTab] = useState<'comments' | 'activity'>('comments');
+  // Bottom Tabs State: 'comments' | 'attachments' | 'activity'
+  const [activeBottomTab, setActiveBottomTab] = useState<'comments' | 'attachments' | 'activity'>('comments');
   const [comments, setComments] = useState<Comment[]>([]);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
 
@@ -98,22 +107,25 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   // Mention Suggestions Popover
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
 
+  // Attachment Upload State
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const fetchTaskDetails = useCallback(async () => {
     if (!currentOrg || !projectId || !taskId) return;
     try {
-      const [taskRes, labelsRes, membersRes, boardsRes, allTasksRes, commentsRes, activitiesRes] =
+      const [taskRes, labelsRes, membersRes, boardsRes, allTasksRes, commentsRes, activitiesRes, attachmentsRes] =
         await Promise.all([
           api.get(`/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}`),
           api.get(`/organizations/${currentOrg.id}/labels`),
           api.get(`/organizations/${currentOrg.id}/members`),
           api.get(`/organizations/${currentOrg.id}/projects/${projectId}/boards`),
           api.get(`/organizations/${currentOrg.id}/projects/${projectId}/tasks?limit=100`),
-          api.get(
-            `/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}/comments`
-          ),
-          api.get(
-            `/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}/activities`
-          ),
+          api.get(`/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}/comments`),
+          api.get(`/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}/activities`),
+          api.get(`/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}/attachments`),
         ]);
 
       const t: Task = taskRes.data.data;
@@ -132,9 +144,11 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
       setOrgMembers(membersRes.data.data || []);
       setComments(commentsRes.data.data || []);
       setActivities(activitiesRes.data.data || []);
+      setAttachments(attachmentsRes.data.data || []);
 
       // Extract columns from default board
-      const defaultBoard = boardsRes.data.data?.find((b: { isDefault: boolean }) => b.isDefault) || boardsRes.data.data?.[0];
+      const defaultBoard =
+        boardsRes.data.data?.find((b: { isDefault: boolean }) => b.isDefault) || boardsRes.data.data?.[0];
       if (defaultBoard?.columns) {
         setColumns(defaultBoard.columns);
       }
@@ -337,7 +351,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     }
   };
 
-  // Handle typing in comment box to detect @mention triggers
   const handleCommentInputChange = (val: string) => {
     setNewCommentText(val);
     const lastWord = val.split(/\s+/).pop() || '';
@@ -354,6 +367,73 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     words.push(`@${memberName} `);
     setNewCommentText(words.join(' '));
     setMentionQuery(null);
+  };
+
+  // Attachment Upload & Delete Handlers
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !currentOrg || !projectId || !taskId) return;
+    const file = files[0];
+
+    // Check size limit (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('error', 'File size exceeds 10MB limit');
+      return;
+    }
+
+    setIsUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      await api.post(
+        `/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}/attachments`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      showToast('success', `Uploaded ${file.name}`);
+      fetchTaskDetails();
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to upload attachment'));
+    } finally {
+      setIsUploadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!currentOrg || !projectId || !taskId) return;
+    if (!confirm('Are you sure you want to delete this attachment?')) return;
+
+    try {
+      await api.delete(
+        `/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}/attachments/${attachmentId}`
+      );
+      showToast('success', 'Attachment deleted');
+      fetchTaskDetails();
+    } catch (err: unknown) {
+      showToast('error', getErrorMessage(err, 'Failed to delete attachment'));
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) return <ImageIcon size={18} color="var(--primary)" />;
+    if (mimeType.includes('pdf') || mimeType.includes('text')) return <FileText size={18} color="#0284c7" />;
+    if (mimeType.includes('zip') || mimeType.includes('tar')) return <FileArchive size={18} color="#f59e0b" />;
+    if (mimeType.includes('json') || mimeType.includes('javascript') || mimeType.includes('typescript')) {
+      return <FileCode size={18} color="#10b981" />;
+    }
+    return <FileGeneric size={18} color="var(--text-secondary)" />;
   };
 
   if (!taskId) return null;
@@ -375,7 +455,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
       <div
         style={{
           width: '100%',
-          maxWidth: '680px',
+          maxWidth: '720px',
           height: '100%',
           backgroundColor: 'var(--bg-card)',
           borderLeft: '1px solid var(--border-subtle)',
@@ -775,9 +855,9 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Tab Switcher: Comments vs Activity Timeline */}
+              {/* Tab Switcher: Comments vs Attachments vs Activity Timeline */}
               <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', marginBottom: '16px' }}>
                   <button
                     type="button"
                     onClick={() => setActiveBottomTab('comments')}
@@ -799,6 +879,25 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
 
                   <button
                     type="button"
+                    onClick={() => setActiveBottomTab('attachments')}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '0.85rem',
+                      fontWeight: activeBottomTab === 'attachments' ? '700' : '500',
+                      color: activeBottomTab === 'attachments' ? 'var(--primary)' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Paperclip size={15} />
+                    <span>Attachments ({attachments.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setActiveBottomTab('activity')}
                     style={{
                       background: 'transparent',
@@ -813,14 +912,13 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                     }}
                   >
                     <History size={15} />
-                    <span>Activity History ({activities.length})</span>
+                    <span>Activity ({activities.length})</span>
                   </button>
                 </div>
 
-                {/* Comments Panel */}
+                {/* 1. Comments Panel */}
                 {activeBottomTab === 'comments' && (
                   <div>
-                    {/* Add Comment Composer */}
                     <form onSubmit={(e) => handlePostComment(e, null)} style={{ marginBottom: '20px', position: 'relative' }}>
                       <textarea
                         className="input-field"
@@ -831,7 +929,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                         style={{ fontSize: '0.85rem', paddingRight: '40px' }}
                       />
 
-                      {/* Mention Suggestions Popover */}
                       {mentionQuery !== null && (
                         <div
                           style={{
@@ -887,7 +984,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                       </div>
                     </form>
 
-                    {/* Comments Tree */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {comments.length === 0 ? (
                         <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '16px' }}>
@@ -954,7 +1050,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                               )}
                             </div>
 
-                            {/* Comment Body or Edit Input */}
                             {editingCommentId === c.id ? (
                               <div style={{ marginTop: '8px' }}>
                                 <textarea
@@ -965,16 +1060,10 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                                   style={{ fontSize: '0.85rem' }}
                                 />
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '6px' }}>
-                                  <button
-                                    className="btn btn-ghost btn-sm"
-                                    onClick={() => setEditingCommentId(null)}
-                                  >
+                                  <button className="btn btn-ghost btn-sm" onClick={() => setEditingCommentId(null)}>
                                     Cancel
                                   </button>
-                                  <button
-                                    className="btn btn-primary btn-sm"
-                                    onClick={() => handleUpdateComment(c.id)}
-                                  >
+                                  <button className="btn btn-primary btn-sm" onClick={() => handleUpdateComment(c.id)}>
                                     Save
                                   </button>
                                 </div>
@@ -985,7 +1074,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                               </p>
                             )}
 
-                            {/* Reply Button Trigger */}
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <button
                                 className="btn btn-ghost btn-sm"
@@ -997,7 +1085,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                               </button>
                             </div>
 
-                            {/* Inline Reply Input */}
                             {replyingToCommentId === c.id && (
                               <form
                                 onSubmit={(e) => handlePostComment(e, c.id)}
@@ -1027,7 +1114,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                               </form>
                             )}
 
-                            {/* Threaded Replies */}
                             {c.replies && c.replies.length > 0 && (
                               <div style={{ marginTop: '10px', paddingLeft: '16px', borderLeft: '2px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {c.replies.map((rep) => (
@@ -1060,7 +1146,157 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                   </div>
                 )}
 
-                {/* Activity Timeline Panel */}
+                {/* 2. Attachments Panel */}
+                {activeBottomTab === 'attachments' && (
+                  <div>
+                    {/* Dropzone */}
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragging(false);
+                        handleFileUpload(e.dataTransfer.files);
+                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        border: `2px dashed ${isDragging ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                        borderRadius: 'var(--radius-lg)',
+                        padding: '24px',
+                        textAlign: 'center',
+                        backgroundColor: isDragging ? 'var(--primary-light)' : 'var(--bg-surface)',
+                        cursor: 'pointer',
+                        marginBottom: '16px',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={(e) => handleFileUpload(e.target.files)}
+                        style={{ display: 'none' }}
+                      />
+                      <UploadCloud
+                        size={28}
+                        style={{ color: isDragging ? 'var(--primary)' : 'var(--text-muted)', margin: '0 auto 8px' }}
+                      />
+                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '600' }}>
+                        {isUploadingFile ? 'Uploading attachment...' : 'Drop files here or click to browse'}
+                      </p>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Supported: PNG, JPEG, PDF, TXT, JSON, CSV, ZIP (Max 10MB)
+                      </p>
+                    </div>
+
+                    {/* Attachments List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {attachments.length === 0 ? (
+                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '16px' }}>
+                          No files attached to this task yet.
+                        </div>
+                      ) : (
+                        attachments.map((att) => (
+                          <div
+                            key={att.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              background: 'var(--bg-surface)',
+                              padding: '10px 14px',
+                              borderRadius: 'var(--radius-md)',
+                              border: '1px solid var(--border-subtle)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
+                              {att.mimeType.startsWith('image/') ? (
+                                <img
+                                  src={att.url}
+                                  alt={att.originalName}
+                                  onClick={() => setPreviewImageUrl(att.url)}
+                                  style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    objectFit: 'cover',
+                                    borderRadius: 'var(--radius-sm)',
+                                    cursor: 'pointer',
+                                    border: '1px solid var(--border-subtle)',
+                                  }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    background: 'var(--bg-card)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  {getFileIcon(att.mimeType)}
+                                </div>
+                              )}
+
+                              <div style={{ overflow: 'hidden' }}>
+                                <p
+                                  style={{
+                                    margin: 0,
+                                    fontSize: '0.85rem',
+                                    fontWeight: '600',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                  }}
+                                >
+                                  {att.originalName}
+                                </p>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                  {formatFileSize(att.size)} • {new Date(att.createdAt).toLocaleDateString()} by{' '}
+                                  {att.uploader?.name || 'User'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <a
+                                href={`/api/v1/attachments/${att.id}/download`}
+                                download
+                                className="btn btn-ghost btn-sm"
+                                style={{ padding: '4px 8px', color: 'var(--primary)' }}
+                                title="Download"
+                              >
+                                <Download size={14} />
+                              </a>
+
+                              {(att.userId === currentUser?.id || currentUser?.role === 'ADMIN') && (
+                                <button
+                                  onClick={() => handleDeleteAttachment(att.id)}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--rose)',
+                                    cursor: 'pointer',
+                                    padding: '4px 6px',
+                                  }}
+                                  title="Delete attachment"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Activity Timeline Panel */}
                 {activeBottomTab === 'activity' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {activities.length === 0 ? (
@@ -1106,6 +1342,45 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Lightbox Image Preview Modal */}
+            {previewImageUrl && (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                  zIndex: 2000,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '24px',
+                }}
+                onClick={() => setPreviewImageUrl(null)}
+              >
+                <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }}>
+                  <img
+                    src={previewImageUrl}
+                    alt="Preview"
+                    style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 'var(--radius-md)' }}
+                  />
+                  <button
+                    onClick={() => setPreviewImageUrl(null)}
+                    style={{
+                      position: 'absolute',
+                      top: '-36px',
+                      right: 0,
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#fff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Bottom Actions Bar */}
             <div

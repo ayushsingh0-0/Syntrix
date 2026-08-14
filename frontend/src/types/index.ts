@@ -190,6 +190,7 @@ export interface Task {
   watchers?: TaskWatcher[];
   dependencies?: TaskDependency[];
   blockingTasks?: TaskDependency[];
+  attachments?: Attachment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -289,7 +290,9 @@ export type ActivityAction =
   | 'ASSIGNEE_CHANGED'
   | 'SPRINT_CHANGED'
   | 'COMMENT_ADDED'
-  | 'COMMENT_DELETED';
+  | 'COMMENT_DELETED'
+  | 'ATTACHMENT_ADDED'
+  | 'ATTACHMENT_DELETED';
 
 export interface ActivityLog {
   id: string;
@@ -302,6 +305,23 @@ export interface ActivityLog {
   user: User;
   createdAt: string;
 }
+
+export interface Attachment {
+  id: string;
+  organizationId: string;
+  projectId?: string | null;
+  taskId?: string | null;
+  userId: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  uploader: User;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 
 
