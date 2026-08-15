@@ -2,7 +2,9 @@ import { CommentRepository } from '../repositories/comment.repository';
 import { TaskRepository } from '../repositories/task.repository';
 import { findOrgMember } from '../repositories/organization.repository';
 import { globalActivityService } from './activity.service';
+import { globalNotificationService } from './notification.service';
 import { ApiError } from '../utils/ApiError';
+
 import prisma from '../config/prisma';
 import type { CreateCommentDTO, UpdateCommentDTO } from '../types/comment.types';
 
@@ -99,7 +101,23 @@ export class CommentService {
       mentionedCount: mentionedUserIds.length,
     });
 
+    // Automatic Notifications for @mentions
+    if (mentionedUserIds.length > 0 && comment) {
+      const task = await this.taskRepo.findTaskDetailsById(taskId);
+      await globalNotificationService.notifyMentionInComment(
+        mentionedUserIds,
+        userId,
+        comment.user.name,
+        orgId,
+        projectId,
+        taskId,
+        task?.key || 'Task',
+        data.content
+      );
+    }
+
     return comment;
+
   }
 
   /**

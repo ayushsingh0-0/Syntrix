@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, LogOut, Shield, UserCircle } from 'lucide-react';
 import { useAuth, useOrg } from '../../context';
-
+import { NotificationCenter } from '../notifications/NotificationCenter';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -60,7 +60,11 @@ export const Navbar: React.FC = () => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }} ref={dropdownRef}>
+        {/* Notification Center */}
+        <NotificationCenter />
+
         <div style={{ position: 'relative' }}>
+
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
             style={{

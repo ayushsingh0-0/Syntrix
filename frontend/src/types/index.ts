@@ -322,6 +322,32 @@ export interface Attachment {
   updatedAt: string;
 }
 
+export type NotificationType =
+  | 'TASK_ASSIGNED'
+  | 'TASK_MENTIONED'
+  | 'COMMENT_MENTIONED'
+  | 'TASK_STATUS_CHANGED'
+  | 'TASK_DUE_SOON'
+  | 'INVITATION_RECEIVED';
+
+export interface Notification {
+  id: string;
+  userId: string;
+  actorId?: string | null;
+  organizationId?: string | null;
+  projectId?: string | null;
+  taskId?: string | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  data?: Record<string, unknown> | null;
+  isRead: boolean;
+  readAt?: string | null;
+  actor?: User | null;
+  createdAt: string;
+}
+
+
 
 
 

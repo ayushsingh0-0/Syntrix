@@ -3,7 +3,9 @@ import { BoardRepository } from '../repositories/board.repository';
 import { findProjectById } from '../repositories/project.repository';
 import { findOrgMember } from '../repositories/organization.repository';
 import { globalActivityService } from './activity.service';
+import { globalNotificationService } from './notification.service';
 import { ApiError } from '../utils/ApiError';
+
 
 import type {
   TaskQueryParams,
@@ -100,6 +102,23 @@ export class TaskService {
         from: task.status,
         to: data.status,
       });
+
+      // Notify Assignee & Watchers
+      const recipients = [
+        ...(task.assigneeId ? [task.assigneeId] : []),
+        ...(task.watchers?.map((w) => w.userId) || []),
+      ];
+      await globalNotificationService.notifyTaskStatusChanged(
+        recipients,
+        task.reporterId,
+        task.reporter?.name || 'User',
+        orgId,
+        projectId,
+        taskId,
+        task.key,
+        task.status,
+        data.status
+      );
     }
     if (data.priority && data.priority !== task.priority) {
       await globalActivityService.logEvent(orgId, projectId, taskId, task.reporterId, 'PRIORITY_CHANGED', {
@@ -112,9 +131,23 @@ export class TaskService {
         from: task.assigneeId,
         to: data.assigneeId,
       });
+
+      // Notify new assignee
+      if (data.assigneeId) {
+        await globalNotificationService.notifyTaskAssigned(
+          data.assigneeId,
+          task.reporterId,
+          orgId,
+          projectId,
+          taskId,
+          task.key,
+          data.title || task.title
+        );
+      }
     }
 
     return this.taskRepo.findTaskDetailsById(taskId);
+
   }
 
 

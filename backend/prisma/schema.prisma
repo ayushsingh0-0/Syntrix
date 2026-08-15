@@ -40,6 +40,8 @@ model User {
   commentMentions         CommentMention[]
   activities              ActivityLog[]
   attachments             Attachment[]
+  receivedNotifications   Notification[]           @relation("UserNotifications")
+  actedNotifications      Notification[]           @relation("UserActedNotifications")
 }
 
 
@@ -116,9 +118,10 @@ model Organization {
   invitations Invitation[]
   teams       Team[]
   projects    Project[]
-  labels      Label[]
-  activities  ActivityLog[]
-  attachments Attachment[]
+  labels        Label[]
+  activities    ActivityLog[]
+  attachments   Attachment[]
+  notifications Notification[]
 }
 
 model OrganizationMember {
@@ -238,6 +241,8 @@ model Project {
   sprints        Sprint[]
   activities     ActivityLog[]
   attachments    Attachment[]
+  notifications  Notification[]
+
 
 
 
@@ -338,8 +343,10 @@ model Task {
   comments       Comment[]
   activities     ActivityLog[]
   attachments    Attachment[]
+  notifications  Notification[]
 
   @@unique([projectId, number])
+
 
 
   @@index([projectId, status])
@@ -523,6 +530,41 @@ model Attachment {
   @@index([projectId, createdAt])
   @@index([organizationId, createdAt])
 }
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_MENTIONED
+  COMMENT_MENTIONED
+  TASK_STATUS_CHANGED
+  TASK_DUE_SOON
+  INVITATION_RECEIVED
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  userId         String
+  actorId        String?
+  organizationId String?
+  projectId      String?
+  taskId         String?
+  type           NotificationType
+  title          String           @db.VarChar(255)
+  message        String           @db.Text
+  data           Json?
+  isRead         Boolean          @default(false)
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  user           User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor          User?            @relation("UserActedNotifications", fields: [actorId], references: [id], onDelete: SetNull)
+  organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task           Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([userId, createdAt])
+}
+
 
 
 
