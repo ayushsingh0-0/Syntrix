@@ -3,6 +3,7 @@ import { ApiError } from '../utils/ApiError';
 import { findOrgMember } from '../repositories/organization.repository';
 import { OrganizationRole } from '../generated/prisma/client';
 import { OrgPermission, getRolePermissions, hasOrgPermission } from '../config/permissions';
+import { logSecurityEvent } from '../utils/logger';
 
 export const requireOrgMember = async (
   req: Request,
@@ -25,6 +26,14 @@ export const requireOrgMember = async (
 
   const member = await findOrgMember(orgId, user.userId);
   if (!member) {
+    logSecurityEvent('AUTHORIZATION_DENIED', {
+      userId: user.userId,
+      orgId,
+      action: 'ACCESS_ORGANIZATION',
+      status: 'DENIED',
+      ipAddress: req.ip,
+      metadata: { reason: 'Not an active organization member' },
+    });
     next(new ApiError(403, 'You are not a member of this organization'));
     return;
   }
@@ -44,6 +53,7 @@ export const requireOrgMember = async (
 export const requireOrgRole = (...allowedRoles: OrganizationRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const orgMember = res.locals.orgMember;
+    const user = res.locals.user;
 
     if (!orgMember) {
       next(new ApiError(403, 'Organization membership context missing'));
@@ -51,6 +61,15 @@ export const requireOrgRole = (...allowedRoles: OrganizationRole[]) => {
     }
 
     if (!allowedRoles.includes(orgMember.role)) {
+      logSecurityEvent('AUTHORIZATION_DENIED', {
+        userId: user?.userId,
+        orgId: orgMember.organizationId,
+        action: `REQUIRE_ROLE_[${allowedRoles.join(',')}]`,
+        status: 'DENIED',
+        ipAddress: req.ip,
+        metadata: { currentRole: orgMember.role, requiredRoles: allowedRoles },
+      });
+
       next(
         new ApiError(
           403,
@@ -67,6 +86,7 @@ export const requireOrgRole = (...allowedRoles: OrganizationRole[]) => {
 export const requireOrgPermission = (...requiredPermissions: OrgPermission[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const orgMember = res.locals.orgMember;
+    const user = res.locals.user;
 
     if (!orgMember) {
       next(new ApiError(403, 'Organization membership context missing'));
@@ -76,6 +96,15 @@ export const requireOrgPermission = (...requiredPermissions: OrgPermission[]) =>
     const hasAll = requiredPermissions.every((perm) => hasOrgPermission(orgMember.role, perm));
 
     if (!hasAll) {
+      logSecurityEvent('AUTHORIZATION_DENIED', {
+        userId: user?.userId,
+        orgId: orgMember.organizationId,
+        action: `REQUIRE_PERMISSION_[${requiredPermissions.join(',')}]`,
+        status: 'DENIED',
+        ipAddress: req.ip,
+        metadata: { currentRole: orgMember.role, requiredPermissions },
+      });
+
       next(
         new ApiError(
           403,
@@ -88,4 +117,3 @@ export const requireOrgPermission = (...requiredPermissions: OrgPermission[]) =>
     next();
   };
 };
-
