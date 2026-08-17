@@ -11,9 +11,12 @@ import {
   Layers,
   Kanban,
   ListTodo,
+  TrendingUp,
 } from 'lucide-react';
 import { useOrg } from '../../context';
 import api from '../../services/api';
+import { Button } from '../../components/common/Button';
+import { Skeleton } from '../../components/common/Skeleton';
 import type { ProjectAnalyticsData } from '../../types';
 
 export const ProjectAnalytics: React.FC = () => {
@@ -45,8 +48,14 @@ export const ProjectAnalytics: React.FC = () => {
 
   if (isLoading || !data) {
     return (
-      <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: '1rem', fontWeight: '600' }}>Loading project analytics...</div>
+      <div className="space-y-6 animate-pulse">
+        <Skeleton height="60px" />
+        <Skeleton height="120px" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} height="100px" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -59,97 +68,77 @@ export const ProjectAnalytics: React.FC = () => {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
+    <div className="space-y-6 pb-12">
       {/* Navigation Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link
-            to={`/projects/${projectId}/board`}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '0.825rem' }}
-          >
-            <ArrowLeft size={14} /> Back to Board
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Link to={`/projects/${projectId}/board`}>
+            <Button variant="secondary" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              Board
+            </Button>
           </Link>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span
-              style={{
-                padding: '4px 8px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--primary-subtle)',
-                color: 'var(--primary)',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: '700',
-                fontSize: '0.85rem',
-              }}
-            >
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
               {project.key}
             </span>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
-              {project.name} Analytics
-            </h1>
+            <h1 className="text-xl font-bold text-slate-100">{project.name} Analytics</h1>
           </div>
         </div>
 
         {/* Quick Nav Links */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Link
-            to={`/projects/${projectId}/board`}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
-          >
-            <Kanban size={14} /> Board
+        <div className="flex items-center gap-2">
+          <Link to={`/projects/${projectId}/board`}>
+            <Button variant="secondary" size="sm" leftIcon={<Kanban className="w-3.5 h-3.5" />}>
+              Board
+            </Button>
           </Link>
-          <Link
-            to={`/projects/${projectId}/tasks`}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
-          >
-            <ListTodo size={14} /> Tasks
+          <Link to={`/projects/${projectId}/tasks`}>
+            <Button variant="secondary" size="sm" leftIcon={<ListTodo className="w-3.5 h-3.5" />}>
+              Tasks
+            </Button>
           </Link>
-          <Link
-            to={`/projects/${projectId}/sprints`}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
-          >
-            <Layers size={14} /> Sprints
+          <Link to={`/projects/${projectId}/sprints`}>
+            <Button variant="secondary" size="sm" leftIcon={<Layers className="w-3.5 h-3.5" />}>
+              Sprints
+            </Button>
           </Link>
         </div>
       </div>
 
       {/* Project Progress Hero Banner */}
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '1.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span className={`badge badge-${project.priority === 'URGENT' ? 'rose' : project.priority === 'HIGH' ? 'amber' : 'emerald'}`}>
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                  project.priority === 'URGENT'
+                    ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+                    : project.priority === 'HIGH'
+                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                    : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                }`}
+              >
                 {project.priority} Priority
               </span>
-              <span className="badge badge-primary">{project.status}</span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                {project.status}
+              </span>
               {project.team && (
-                <span className="badge badge-neutral">{project.team.name}</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                  {project.team.name}
+                </span>
               )}
             </div>
             {project.description && (
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '4px' }}>
-                {project.description}
-              </p>
+              <p className="text-xs text-slate-400 mt-1">{project.description}</p>
             )}
           </div>
 
           {(project.startDate || project.targetDate) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              <Calendar size={15} color="var(--primary)" />
+            <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
+              <Calendar className="w-3.5 h-3.5 text-indigo-400" />
               <span>
                 {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Start'} →{' '}
                 {project.targetDate ? new Date(project.targetDate).toLocaleDateString() : 'Ongoing'}
@@ -159,193 +148,187 @@ export const ProjectAnalytics: React.FC = () => {
         </div>
 
         {/* Progress Bar */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
-            <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-              Overall Project Completion
-            </span>
-            <span style={{ fontWeight: '700', color: 'var(--primary)' }}>
+        <div className="space-y-1.5 pt-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-200">Overall Milestone Progress</span>
+            <span className="font-bold text-indigo-400">
               {metrics.progressPercentage}% ({metrics.completedTasks} / {metrics.totalTasks} tasks)
             </span>
           </div>
-          <div style={{ height: '8px', width: '100%', background: 'var(--bg-card)', borderRadius: '4px', overflow: 'hidden' }}>
+          <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
             <div
-              style={{
-                height: '100%',
-                width: `${metrics.progressPercentage}%`,
-                background: 'linear-gradient(90deg, #6366f1 0%, #10b981 100%)',
-                borderRadius: '4px',
-                transition: 'width 0.4s ease',
-              }}
+              className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500"
+              style={{ width: `${metrics.progressPercentage}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Total Tasks</span>
-            <div style={{ color: 'var(--primary)', padding: '5px', background: 'var(--primary-subtle)', borderRadius: '4px' }}>
-              <FolderKanban size={16} />
+      {/* KPI Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4.5 shadow-lg">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-xs font-semibold">Total Scope</span>
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+              <FolderKanban className="w-4 h-4" />
             </div>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-            {metrics.totalTasks}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {metrics.activeTasks} active tasks
-          </div>
+          <div className="text-2xl font-bold text-slate-100">{metrics.totalTasks}</div>
+          <div className="text-[11px] text-slate-400 mt-1">{metrics.activeTasks} in-flight tasks</div>
         </div>
 
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Story Points</span>
-            <div style={{ color: '#10b981', padding: '5px', background: 'rgba(16, 185, 129, 0.12)', borderRadius: '4px' }}>
-              <CheckCircle2 size={16} />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4.5 shadow-lg">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-xs font-semibold">Story Points</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+          <div className="text-2xl font-bold text-emerald-400">
             {metrics.storyPoints.completed} / {metrics.storyPoints.total}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Points delivered
-          </div>
+          <div className="text-[11px] text-slate-400 mt-1">Delivered velocity points</div>
         </div>
 
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Overdue Items</span>
-            <div style={{ color: metrics.overdueCount ? '#f43f5e' : 'var(--text-muted)', padding: '5px', background: metrics.overdueCount ? 'rgba(244, 63, 94, 0.12)' : 'var(--bg-card)', borderRadius: '4px' }}>
-              <AlertTriangle size={16} />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4.5 shadow-lg">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-xs font-semibold">Overdue Tasks</span>
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                metrics.overdueCount > 0
+                  ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30'
+                  : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: metrics.overdueCount ? '#f43f5e' : 'var(--text-primary)' }}>
+          <div
+            className={`text-2xl font-bold ${
+              metrics.overdueCount > 0 ? 'text-rose-400' : 'text-slate-100'
+            }`}
+          >
             {metrics.overdueCount}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {metrics.overdueCount > 0 ? 'Action needed' : 'All milestones on time'}
+          <div className="text-[11px] text-slate-400 mt-1">
+            {metrics.overdueCount > 0 ? 'Urgent action required' : 'All milestones on schedule'}
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Assigned Team</span>
-            <div style={{ color: '#06b6d4', padding: '5px', background: 'rgba(6, 182, 212, 0.12)', borderRadius: '4px' }}>
-              <Users size={16} />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4.5 shadow-lg">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-xs font-semibold">Project Roster</span>
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+              <Users className="w-4 h-4" />
             </div>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-            {project.memberCount}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Project contributors
-          </div>
+          <div className="text-2xl font-bold text-cyan-400">{project.memberCount}</div>
+          <div className="text-[11px] text-slate-400 mt-1">Assigned collaborators</div>
         </div>
       </div>
 
-      {/* Velocity & Status Distribution Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: '20px' }}>
-        {/* Project 14-Day Velocity */}
-        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                Project Delivery Velocity
-              </h3>
-              <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Daily task creation vs. completion
-              </p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#6366f1' }} />
-                <span style={{ color: 'var(--text-secondary)' }}>Created</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981' }} />
-                <span style={{ color: 'var(--text-secondary)' }}>Completed</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ flex: 1, minHeight: '180px', display: 'flex', alignItems: 'flex-end', gap: '8px', paddingBottom: '8px' }}>
-            {velocity.map((v) => {
-              const createdHeight = Math.round((v.created / maxVelocity) * 130);
-              const completedHeight = Math.round((v.completed / maxVelocity) * 130);
-
-              return (
-                <div
-                  key={v.date}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '4px',
-                    height: '100%',
-                    justifyContent: 'flex-end',
-                  }}
-                  title={`${v.label}: ${v.created} created, ${v.completed} completed`}
-                >
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', width: '100%', justifyContent: 'center' }}>
-                    <div
-                      style={{
-                        width: '40%',
-                        maxWidth: '12px',
-                        height: `${Math.max(createdHeight, 4)}px`,
-                        background: '#6366f1',
-                        borderRadius: '3px 3px 0 0',
-                      }}
-                    />
-                    <div
-                      style={{
-                        width: '40%',
-                        maxWidth: '12px',
-                        height: `${Math.max(completedHeight, 4)}px`,
-                        background: '#10b981',
-                        borderRadius: '3px 3px 0 0',
-                      }}
-                    />
-                  </div>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', transform: 'rotate(-30deg)', transformOrigin: 'top left', whiteSpace: 'nowrap', marginTop: '6px' }}>
-                    {v.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Status Distribution */}
-        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* Velocity & Status Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Velocity Chart (2 cols) */}
+        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg flex flex-col justify-between">
           <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-              Status Breakdown
-            </h3>
-            <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Tasks across columns
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-indigo-400" />
+                  <span>Project Delivery Velocity</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Daily task throughput breakdown</p>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-indigo-500" />
+                  <span className="text-slate-300">Created</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-emerald-500" />
+                  <span className="text-slate-300">Completed</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="h-44 flex items-end gap-2 pt-4 border-b border-slate-800 pb-2">
+              {velocity.map((v) => {
+                const createdHeight = Math.round((v.created / maxVelocity) * 130);
+                const completedHeight = Math.round((v.completed / maxVelocity) * 130);
+
+                return (
+                  <div
+                    key={v.date}
+                    className="flex-1 flex flex-col items-center justify-end h-full gap-1 group relative cursor-pointer"
+                  >
+                    <div className="absolute -top-10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-800 text-[10px] text-slate-100 px-2 py-1 rounded shadow-lg whitespace-nowrap z-20 border border-slate-700">
+                      {v.label}: {v.created} in, {v.completed} out
+                    </div>
+
+                    <div className="flex items-end gap-1 w-full justify-center">
+                      <div
+                        style={{ height: `${Math.max(createdHeight, 4)}px` }}
+                        className="w-1/2 max-w-[10px] bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t transition-all duration-300 group-hover:brightness-125"
+                      />
+                      <div
+                        style={{ height: `${Math.max(completedHeight, 4)}px` }}
+                        className="w-1/2 max-w-[10px] bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t transition-all duration-300 group-hover:brightness-125"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="flex items-center justify-between pt-3 text-[10px] text-slate-500 font-mono">
+            <span>{velocity[0]?.label || 'Start'}</span>
+            <span>14-Day Delivery Burn</span>
+            <span>{velocity[velocity.length - 1]?.label || 'Today'}</span>
+          </div>
+        </div>
+
+        {/* Status Distribution (1 col) */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg space-y-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-100">Status Distribution</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Tasks across workflow columns</p>
+          </div>
+
+          <div className="space-y-3">
             {[
-              { label: 'Done', count: metrics.byStatus.DONE || 0, color: '#10b981' },
-              { label: 'In Progress', count: metrics.byStatus.IN_PROGRESS || 0, color: '#3b82f6' },
-              { label: 'In Review', count: metrics.byStatus.REVIEW || 0, color: '#8b5cf6' },
-              { label: 'To Do', count: metrics.byStatus.TODO || 0, color: '#64748b' },
-              { label: 'Cancelled', count: metrics.byStatus.CANCELLED || 0, color: '#f43f5e' },
+              { label: 'Done', count: metrics.byStatus.DONE || 0, color: 'bg-emerald-500' },
+              {
+                label: 'In Progress',
+                count: metrics.byStatus.IN_PROGRESS || 0,
+                color: 'bg-indigo-500',
+              },
+              { label: 'In Review', count: metrics.byStatus.REVIEW || 0, color: 'bg-violet-500' },
+              { label: 'To Do', count: metrics.byStatus.TODO || 0, color: 'bg-slate-600' },
+              {
+                label: 'Cancelled',
+                count: metrics.byStatus.CANCELLED || 0,
+                color: 'bg-rose-500',
+              },
             ].map((st) => {
-              const percent = metrics.totalTasks ? Math.round((st.count / metrics.totalTasks) * 100) : 0;
+              const percent = metrics.totalTasks
+                ? Math.round((st.count / metrics.totalTasks) * 100)
+                : 0;
               return (
-                <div key={st.label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '3px' }}>
-                    <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{st.label}</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>{st.count} ({percent}%)</span>
+                <div key={st.label} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-slate-200">{st.label}</span>
+                    <span className="text-slate-400">
+                      {st.count} ({percent}%)
+                    </span>
                   </div>
-                  <div style={{ height: '6px', width: '100%', background: 'var(--bg-card)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${percent}%`, background: st.color, borderRadius: '3px' }} />
+                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${st.color} rounded-full transition-all duration-500`}
+                      style={{ width: `${percent}%` }}
+                    />
                   </div>
                 </div>
               );
@@ -354,67 +337,42 @@ export const ProjectAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {/* Workload & Sprints / Overdue Tasks Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
-        {/* Project Contributor Workload */}
-        <div className="card" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '1rem' }}>
-            Contributor Workload
-          </h3>
+      {/* Contributor Workload & Overdue Items */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Contributor Workload */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg space-y-4">
+          <h3 className="text-base font-semibold text-slate-100">Contributor Allocation</h3>
 
           {memberWorkload.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            <div className="text-center py-6 text-xs text-slate-500">
               No assigned contributors.
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="space-y-2.5">
               {memberWorkload.map((mw) => (
                 <div
                   key={mw.user.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-subtle)',
-                  }}
+                  className="flex items-center justify-between p-3 rounded-lg bg-slate-950/60 border border-slate-800"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="flex items-center gap-3">
                     {mw.user.avatarUrl ? (
                       <img
                         src={mw.user.avatarUrl}
                         alt={mw.user.name}
-                        style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+                        className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-700"
                       />
                     ) : (
-                      <div
-                        style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          background: 'var(--primary-subtle)',
-                          color: 'var(--primary)',
-                          fontWeight: '700',
-                          fontSize: '0.75rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
+                      <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-indigo-400">
                         {mw.user.name.charAt(0)}
                       </div>
                     )}
                     <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-                        {mw.user.name}
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{mw.role}</div>
+                      <div className="text-xs font-semibold text-slate-200">{mw.user.name}</div>
+                      <div className="text-[10px] text-slate-400">{mw.role}</div>
                     </div>
                   </div>
 
-                  <span className="badge badge-primary" style={{ fontSize: '0.75rem' }}>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
                     {mw.assignedTasks} tasks
                   </span>
                 </div>
@@ -423,41 +381,32 @@ export const ProjectAnalytics: React.FC = () => {
           )}
         </div>
 
-        {/* Overdue Tasks Attention List */}
-        <div className="card" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Flame size={16} color="#f43f5e" /> Overdue Items
+        {/* Overdue Items Attention */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg space-y-4">
+          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
+            <Flame className="w-4 h-4 text-rose-400" />
+            <span>Overdue Tasks Attention</span>
           </h3>
 
           {overdueTasks.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              No overdue tasks in this project.
+            <div className="text-center py-6 text-xs text-slate-500">
+              All tasks are delivered on or before due date!
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="space-y-2.5">
               {overdueTasks.map((ot) => (
                 <div
                   key={ot.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 12px',
-                    borderRadius: 'var(--radius-md)',
-                    background: 'var(--bg-card)',
-                    border: '1px solid rgba(244, 63, 94, 0.2)',
-                  }}
+                  className="flex items-center justify-between p-3 rounded-lg bg-slate-950/60 border border-rose-500/20"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                    <span className="badge badge-primary" style={{ fontSize: '0.7rem', flexShrink: 0 }}>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30 shrink-0">
                       {ot.key}
                     </span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {ot.title}
-                    </span>
+                    <span className="text-xs font-medium text-slate-200 truncate">{ot.title}</span>
                   </div>
 
-                  <span style={{ fontSize: '0.7rem', color: '#f43f5e', fontWeight: '600', flexShrink: 0, marginLeft: '8px' }}>
+                  <span className="text-[10px] text-rose-400 font-mono font-semibold shrink-0 ml-2">
                     Due {ot.dueDate ? new Date(ot.dueDate).toLocaleDateString() : 'Past'}
                   </span>
                 </div>
@@ -469,44 +418,39 @@ export const ProjectAnalytics: React.FC = () => {
 
       {/* Sprints Overview */}
       {sprints.length > 0 && (
-        <div className="card" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg space-y-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                Sprints Performance
-              </h3>
-              <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Iteration scopes and milestone progress
-              </p>
+              <h3 className="text-base font-semibold text-slate-100">Sprint Iteration History</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Scoping and iteration status</p>
             </div>
-            <Link to={`/projects/${projectId}/sprints`} style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>
+            <Link
+              to={`/projects/${projectId}/sprints`}
+              className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+            >
               Manage Sprints →
             </Link>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sprints.map((sp) => (
               <div
                 key={sp.id}
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
+                className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between"
               >
                 <div>
-                  <div style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                    {sp.name}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    {sp.taskCount} tasks included
-                  </div>
+                  <div className="text-sm font-semibold text-slate-200">{sp.name}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{sp.taskCount} tasks included</div>
                 </div>
-                <span className={`badge badge-${sp.status === 'ACTIVE' ? 'primary' : sp.status === 'COMPLETED' ? 'emerald' : 'neutral'}`} style={{ fontSize: '0.7rem' }}>
+                <span
+                  className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                    sp.status === 'ACTIVE'
+                      ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                      : sp.status === 'COMPLETED'
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                  }`}
+                >
                   {sp.status}
                 </span>
               </div>

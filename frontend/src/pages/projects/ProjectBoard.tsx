@@ -14,14 +14,10 @@ import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
 import { getErrorMessage } from '../../utils/error';
 import { TaskDetailDrawer } from '../../components/tasks/TaskDetailDrawer';
-import type {
-
-  Board,
-  TaskPriority,
-  Project,
-  OrganizationMember,
-} from '../../types';
-
+import { Button } from '../../components/common/Button';
+import { Modal } from '../../components/common/Modal';
+import { FormField, Input, Select, Textarea } from '../../components/common/FormComponents';
+import type { Board, TaskPriority, Project, OrganizationMember } from '../../types';
 
 export const ProjectBoard: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -34,7 +30,6 @@ export const ProjectBoard: React.FC = () => {
   const [orgMembers, setOrgMembers] = useState<OrganizationMember[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,33 +82,8 @@ export const ProjectBoard: React.FC = () => {
   }, [currentOrg, projectId, showToast]);
 
   useEffect(() => {
-    let isMounted = true;
-    if (!currentOrg || !projectId) return;
-
-    Promise.all([
-      api.get(`/organizations/${currentOrg.id}/projects/${projectId}`),
-      api.get(`/organizations/${currentOrg.id}/projects/${projectId}/boards`),
-      api.get(`/organizations/${currentOrg.id}/members`),
-    ]).then(([projRes, boardsRes, membersRes]) => {
-      if (!isMounted) return;
-      setProject(projRes.data.data);
-      const bList: Board[] = boardsRes.data.data || [];
-      setBoards(bList);
-      if (bList.length > 0) {
-        setActiveBoard(bList.find((b) => b.isDefault) || bList[0]);
-      }
-      setOrgMembers(membersRes.data.data || []);
-      setIsLoading(false);
-    }).catch((err: unknown) => {
-      if (!isMounted) return;
-      showToast('error', getErrorMessage(err, 'Failed to load project board'));
-      setIsLoading(false);
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentOrg, projectId, showToast]);
+    fetchBoardData();
+  }, [fetchBoardData]);
 
   const handleQuickCreateTask = async (columnId: string, e: React.FormEvent) => {
     e.preventDefault();
@@ -167,10 +137,13 @@ export const ProjectBoard: React.FC = () => {
     if (!currentOrg || !projectId) return;
 
     try {
-      await api.patch(`/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}/move`, {
-        columnId: targetColumnId,
-        targetPosition: 65535.0,
-      });
+      await api.patch(
+        `/organizations/${currentOrg.id}/projects/${projectId}/tasks/${taskId}/move`,
+        {
+          columnId: targetColumnId,
+          targetPosition: 65535.0,
+        }
+      );
       fetchBoardData();
     } catch (err: unknown) {
       showToast('error', getErrorMessage(err, 'Failed to move task'));
@@ -232,75 +205,53 @@ export const ProjectBoard: React.FC = () => {
     }
   };
 
-  const getPriorityBadge = (priority: TaskPriority) => {
-    switch (priority) {
-      case 'URGENT':
-        return <span className="badge badge-rose" style={{ fontSize: '0.65rem' }}>URGENT</span>;
-      case 'HIGH':
-        return <span className="badge badge-amber" style={{ fontSize: '0.65rem' }}>HIGH</span>;
-      case 'MEDIUM':
-        return <span className="badge badge-primary" style={{ fontSize: '0.65rem' }}>MED</span>;
-      case 'LOW':
-        return <span className="badge badge-neutral" style={{ fontSize: '0.65rem' }}>LOW</span>;
-    }
+  const priorityStyles: Record<TaskPriority, string> = {
+    URGENT: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    HIGH: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    MEDIUM: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+    LOW: 'bg-slate-800 text-slate-300 border-slate-700',
   };
 
   if (isLoading || !project) {
-    return <div style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>Loading Kanban board...</div>;
+    return (
+      <div className="text-slate-400 py-12 text-center text-xs">Loading Kanban board...</div>
+    );
   }
 
   const columns = activeBoard?.columns || [];
 
   return (
-    <div>
+    <div className="space-y-6 pb-12">
       {/* Top Header & Breadcrumb */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
             <Link
               to={`/projects/${project.id}`}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                color: 'var(--text-muted)',
-                fontSize: '0.825rem',
-              }}
+              className="hover:text-slate-200 flex items-center gap-1"
             >
-              <ArrowLeft size={14} />
+              <ArrowLeft className="w-3.5 h-3.5" />
               <span>{project.name}</span>
             </Link>
-            <span style={{ color: 'var(--border-subtle)' }}>/</span>
-            <span style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+            <span>/</span>
+            <span className="text-slate-200 font-medium">
               {activeBoard?.name || 'Kanban Board'}
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: 'var(--radius-md)',
-                background: 'rgba(99, 102, 241, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--primary)',
-              }}
-            >
-              <Kanban size={18} />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+              <Kanban className="w-4 h-4" />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="flex items-center gap-2">
               {boards.length > 1 ? (
                 <select
-                  className="input-field"
+                  className="bg-slate-900 border border-slate-700 text-lg font-bold text-slate-100 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   value={activeBoard?.id}
                   onChange={(e) => {
                     const selected = boards.find((b) => b.id === e.target.value);
                     if (selected) setActiveBoard(selected);
                   }}
-                  style={{ fontSize: '1.4rem', fontWeight: '800', padding: '2px 8px' }}
                 >
                   {boards.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -309,103 +260,85 @@ export const ProjectBoard: React.FC = () => {
                   ))}
                 </select>
               ) : (
-                <h1 style={{ fontSize: '1.6rem' }}>{activeBoard?.name || 'Project Board'}</h1>
+                <h1 className="text-2xl font-bold text-slate-100">
+                  {activeBoard?.name || 'Project Board'}
+                </h1>
               )}
             </div>
           </div>
         </div>
 
-
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <Link to={`/projects/${project.id}/tasks`} className="btn btn-secondary btn-sm">
-            <ListFilter size={14} />
-            <span>List View</span>
+        <div className="flex items-center gap-2">
+          <Link to={`/projects/${project.id}/tasks`}>
+            <Button variant="secondary" size="sm" leftIcon={<ListFilter className="w-3.5 h-3.5" />}>
+              List View
+            </Button>
           </Link>
 
           {hasPermission('PROJECT_UPDATE') && (
-            <button className="btn btn-secondary btn-sm" onClick={() => setIsColumnModalOpen(true)}>
-              <Plus size={14} />
-              <span>Add Column</span>
-            </button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsColumnModalOpen(true)}
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+            >
+              Add Column
+            </Button>
           )}
 
-
-          <button
-            className="btn btn-primary btn-sm"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => {
               if (columns.length > 0) setTaskColumnId(columns[0].id);
               setIsTaskModalOpen(true);
             }}
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
           >
-            <Plus size={14} />
-            <span>New Task</span>
-          </button>
+            New Task
+          </Button>
         </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div
-        className="card"
-        style={{
-          padding: '10px 16px',
-          marginBottom: '20px',
-          display: 'flex',
-          gap: '12px',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
-        <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-          <input
-            type="text"
-            className="input-field"
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center gap-3 shadow-lg">
+        <div className="flex-1 min-w-[200px]">
+          <Input
             placeholder="Filter tasks by key or title..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ paddingLeft: '34px', paddingBottom: '6px', paddingTop: '6px', fontSize: '0.85rem' }}
+            leftIcon={<Search className="w-4 h-4" />}
           />
-          <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
         </div>
 
-        <select
-          className="input-field"
-          value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value)}
-          style={{ width: '130px', padding: '6px 8px', fontSize: '0.85rem' }}
-        >
-          <option value="">All Priorities</option>
-          <option value="URGENT">URGENT</option>
-          <option value="HIGH">HIGH</option>
-          <option value="MEDIUM">MEDIUM</option>
-          <option value="LOW">LOW</option>
-        </select>
+        <div className="w-40">
+          <Select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            options={[
+              { value: '', label: 'All Priorities' },
+              { value: 'URGENT', label: 'URGENT' },
+              { value: 'HIGH', label: 'HIGH' },
+              { value: 'MEDIUM', label: 'MEDIUM' },
+              { value: 'LOW', label: 'LOW' },
+            ]}
+          />
+        </div>
 
-        <select
-          className="input-field"
-          value={assigneeFilter}
-          onChange={(e) => setAssigneeFilter(e.target.value)}
-          style={{ width: '150px', padding: '6px 8px', fontSize: '0.85rem' }}
-        >
-          <option value="">All Assignees</option>
-          {orgMembers.map((m) => (
-            <option key={m.userId} value={m.userId}>
-              {m.user.name}
-            </option>
-          ))}
-        </select>
+        <div className="w-48">
+          <Select
+            value={assigneeFilter}
+            onChange={(e) => setAssigneeFilter(e.target.value)}
+            options={[
+              { value: '', label: 'All Assignees' },
+              ...orgMembers.map((m) => ({ value: m.userId, label: m.user.name })),
+            ]}
+          />
+        </div>
       </div>
 
       {/* Kanban Multi-Column Board */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '16px',
-          overflowX: 'auto',
-          paddingBottom: '24px',
-          minHeight: 'calc(100vh - 280px)',
-          alignItems: 'flex-start',
-        }}
-      >
+      <div className="flex gap-4 overflow-x-auto pb-6 min-h-[calc(100vh-320px)] items-start">
         {columns.map((column) => {
           const filteredTasks = column.tasks.filter((t) => {
             const matchesQuery =
@@ -422,45 +355,22 @@ export const ProjectBoard: React.FC = () => {
           return (
             <div
               key={column.id}
-              style={{
-                flex: '0 0 310px',
-                background: 'var(--bg-surface)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-default)',
-                display: 'flex',
-                flexDirection: 'column',
-                maxHeight: 'calc(100vh - 270px)',
-              }}
+              className="flex-shrink-0 w-80 bg-slate-900/90 border border-slate-800 rounded-xl flex flex-col max-h-[calc(100vh-300px)] shadow-xl"
             >
               {/* Column Header */}
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderBottom: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <div
-                    style={{
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: 'var(--radius-full)',
-                      background: column.color || 'var(--primary)',
-                    }}
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: column.color || '#6366f1' }}
                   />
-                  <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>{column.name}</span>
+                  <span className="font-bold text-xs text-slate-100">{column.name}</span>
                   <span
-                    style={{
-                      fontSize: '0.75rem',
-                      fontWeight: '700',
-                      padding: '2px 6px',
-                      borderRadius: 'var(--radius-full)',
-                      background: isOverWip ? 'rgba(244, 63, 94, 0.2)' : 'var(--bg-card)',
-                      color: isOverWip ? 'var(--rose)' : 'var(--text-muted)',
-                    }}
+                    className={`text-[10px] font-bold px-2 py-0.2 rounded-full border ${
+                      isOverWip
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}
                   >
                     {column.tasks.length}
                     {column.wipLimit ? ` / ${column.wipLimit}` : ''}
@@ -469,148 +379,90 @@ export const ProjectBoard: React.FC = () => {
 
                 {hasPermission('PROJECT_UPDATE') && (
                   <button
-                    className="btn btn-ghost btn-sm"
                     onClick={() => handleDeleteColumn(column.id, column.name)}
-                    style={{ padding: '2px 4px', color: 'var(--text-muted)' }}
+                    className="text-slate-500 hover:text-rose-400 p-1 rounded transition-colors cursor-pointer"
                     title="Delete column"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
 
-              {/* Tasks List */}
-              <div
-                style={{
-                  padding: '10px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  flex: 1,
-                }}
-              >
+              {/* Task Cards Container */}
+              <div className="p-2.5 overflow-y-auto space-y-2.5 flex-1">
                 {filteredTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="card"
                     onClick={() => setSelectedTaskId(task.id)}
-                    style={{
-                      padding: '12px',
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border-subtle)',
-                      boxShadow: 'var(--shadow-sm)',
-                      cursor: 'pointer',
-                      transition: 'transform 0.15s ease, border-color 0.15s ease',
-                    }}
+                    className="group bg-slate-950/70 hover:bg-slate-950 border border-slate-800/80 hover:border-indigo-500/40 rounded-lg p-3 shadow-md transition-all duration-150 cursor-pointer hover:-translate-y-0.5"
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          fontFamily: 'var(--font-mono)',
-                          fontWeight: '700',
-                          color: 'var(--primary)',
-                        }}
-                      >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-mono font-bold text-indigo-400">
                         {task.key}
                       </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {getPriorityBadge(task.priority)}
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold uppercase border ${
+                            priorityStyles[task.priority] || priorityStyles.MEDIUM
+                          }`}
+                        >
+                          {task.priority}
+                        </span>
                         <button
                           onClick={(e) => handleDeleteTask(task.id, task.key, e)}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--text-muted)',
-                            cursor: 'pointer',
-                            padding: '2px',
-                          }}
+                          className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-0.5 transition-opacity"
                         >
-                          <X size={12} />
+                          <X className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
 
-                    <div style={{ fontWeight: '600', fontSize: '0.875rem', marginBottom: '8px', lineHeight: '1.3' }}>
+                    <div className="font-semibold text-xs text-slate-100 group-hover:text-indigo-300 transition-colors leading-snug mb-2">
                       {task.title}
                     </div>
 
                     {task.description && (
-                      <p
-                        style={{
-                          fontSize: '0.775rem',
-                          color: 'var(--text-secondary)',
-                          marginBottom: '10px',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
+                      <p className="text-[11px] text-slate-400 line-clamp-2 mb-2 leading-relaxed">
                         {task.description}
                       </p>
                     )}
 
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        paddingTop: '8px',
-                        borderTop: '1px solid var(--border-subtle)',
-                      }}
-                    >
-                      {/* Assignee Avatar */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-[11px]">
+                      {/* Assignee */}
+                      <div>
                         {task.assignee ? (
-                          task.assignee.avatarUrl ? (
-                            <img
-                              src={task.assignee.avatarUrl}
-                              alt={task.assignee.name}
-                              style={{ width: '22px', height: '22px', borderRadius: 'var(--radius-full)', objectFit: 'cover' }}
-                            />
-                          ) : (
-                            <div
-                              style={{
-                                width: '22px',
-                                height: '22px',
-                                borderRadius: 'var(--radius-full)',
-                                background: 'var(--bg-surface)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '0.65rem',
-                                fontWeight: '700',
-                              }}
-                            >
-                              {task.assignee.name.charAt(0)}
-                            </div>
-                          )
-                        ) : (
-                          <div style={{ color: 'var(--text-muted)', fontSize: '0.725rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <UserIcon size={12} />
-                            <span>Unassigned</span>
+                          <div className="flex items-center gap-1.5">
+                            {task.assignee.avatarUrl ? (
+                              <img
+                                src={task.assignee.avatarUrl}
+                                alt={task.assignee.name}
+                                className="w-5 h-5 rounded-full object-cover ring-1 ring-slate-700"
+                              />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-[9px] text-indigo-400">
+                                {task.assignee.name.charAt(0)}
+                              </div>
+                            )}
+                            <span className="text-slate-300 text-[10px] truncate max-w-[80px]">
+                              {task.assignee.name}
+                            </span>
                           </div>
+                        ) : (
+                          <span className="text-slate-500 text-[10px] flex items-center gap-1">
+                            <UserIcon className="w-3 h-3" /> Unassigned
+                          </span>
                         )}
                       </div>
 
-                      {/* Move Column Dropdown */}
+                      {/* Move Dropdown */}
                       <select
-                        className="input-field"
                         value={task.columnId || ''}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           e.stopPropagation();
                           handleMoveTask(task.id, e.target.value);
                         }}
-                        style={{
-                          width: 'auto',
-                          padding: '2px 6px',
-                          fontSize: '0.725rem',
-                          background: 'var(--bg-surface)',
-                          borderColor: 'var(--border-subtle)',
-                        }}
+                        className="bg-slate-900 border border-slate-700 text-[10px] text-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       >
                         {columns.map((c) => (
                           <option key={c.id} value={c.id}>
@@ -622,55 +474,43 @@ export const ProjectBoard: React.FC = () => {
                   </div>
                 ))}
 
-
                 {/* Inline Quick Task Creator */}
                 {addingTaskInColumnId === column.id ? (
                   <form
                     onSubmit={(e) => handleQuickCreateTask(column.id, e)}
-                    style={{ background: 'var(--bg-card)', padding: '8px', borderRadius: 'var(--radius-md)' }}
+                    className="bg-slate-950 p-2.5 rounded-lg border border-indigo-500/30 space-y-2"
                   >
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="Enter task title..."
+                    <Input
+                      placeholder="Task title..."
                       value={quickTaskTitle}
                       onChange={(e) => setQuickTaskTitle(e.target.value)}
                       autoFocus
                       required
-                      style={{ fontSize: '0.85rem', marginBottom: '6px' }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
-                      <button
+                    <div className="flex justify-end gap-1.5">
+                      <Button
                         type="button"
-                        className="btn btn-ghost btn-sm"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
                           setAddingTaskInColumnId(null);
                           setQuickTaskTitle('');
                         }}
-                        style={{ padding: '2px 8px', fontSize: '0.75rem' }}
                       >
                         Cancel
-                      </button>
-                      <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '2px 8px', fontSize: '0.75rem' }}>
+                      </Button>
+                      <Button type="submit" variant="primary" size="sm">
                         Add
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 ) : (
                   <button
-                    className="btn btn-ghost btn-sm"
                     onClick={() => setAddingTaskInColumnId(column.id)}
-                    style={{
-                      width: '100%',
-                      justifyContent: 'flex-start',
-                      color: 'var(--text-muted)',
-                      border: '1px dashed var(--border-subtle)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '6px 10px',
-                    }}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-slate-800 hover:border-slate-700 text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-slate-950/30 hover:bg-slate-950/60"
                   >
-                    <Plus size={14} />
-                    <span style={{ fontSize: '0.8rem' }}>Add Task</span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Task</span>
                   </button>
                 )}
               </div>
@@ -680,197 +520,177 @@ export const ProjectBoard: React.FC = () => {
       </div>
 
       {/* Create Column Modal */}
-      {isColumnModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsColumnModalOpen(false)}>
-          <div className="modal-content" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.2rem' }}>Add Board Column</h3>
-              <button onClick={() => setIsColumnModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)' }}>
-                <X size={18} />
-              </button>
+      <Modal
+        isOpen={isColumnModalOpen}
+        onClose={() => setIsColumnModalOpen(false)}
+        title="Add Board Column"
+        subtitle={`Add a new workflow column to ${activeBoard?.name}`}
+      >
+        <form onSubmit={handleCreateColumn} className="space-y-4">
+          <FormField label="Column Name" required>
+            <Input
+              placeholder="e.g. In Review"
+              value={newColumnName}
+              onChange={(e) => setNewColumnName(e.target.value)}
+              required
+              autoFocus
+            />
+          </FormField>
+
+          <FormField label="Column Color">
+            <div className="flex items-center gap-2 pt-1">
+              {[
+                '#64748b',
+                '#3b82f6',
+                '#8b5cf6',
+                '#10b981',
+                '#ef4444',
+                '#f59e0b',
+                '#06b6d4',
+              ].map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setNewColumnColor(color)}
+                  className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
+                    newColumnColor === color ? 'scale-125 ring-2 ring-white' : ''
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
             </div>
+          </FormField>
 
-            <form onSubmit={handleCreateColumn}>
-              <div className="input-group">
-                <label className="input-label">Column Name</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="e.g. Quality Assurance"
-                  value={newColumnName}
-                  onChange={(e) => setNewColumnName(e.target.value)}
-                  required
-                  autoFocus
-                />
-              </div>
+          <FormField label="WIP Limit (Optional)">
+            <Input
+              type="number"
+              placeholder="e.g. 5"
+              min={1}
+              value={newColumnWip}
+              onChange={(e) => setNewColumnWip(e.target.value ? Number(e.target.value) : '')}
+            />
+          </FormField>
 
-              <div className="input-group">
-                <label className="input-label">Column Color</label>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {['#64748b', '#3b82f6', '#8b5cf6', '#10b981', '#ef4444', '#f59e0b', '#06b6d4'].map((color) => (
-                    <div
-                      key={color}
-                      onClick={() => setNewColumnColor(color)}
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: 'var(--radius-full)',
-                        background: color,
-                        cursor: 'pointer',
-                        border: newColumnColor === color ? '2px solid #fff' : '2px solid transparent',
-                        transform: newColumnColor === color ? 'scale(1.15)' : 'none',
-                        transition: 'transform 0.15s ease',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Work In Progress (WIP) Limit (Optional)</label>
-                <input
-                  type="number"
-                  className="input-field"
-                  placeholder="e.g. 5"
-                  min={1}
-                  value={newColumnWip}
-                  onChange={(e) => setNewColumnWip(e.target.value ? Number(e.target.value) : '')}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1.5rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsColumnModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={isCreatingColumn || !newColumnName.trim()}>
-                  {isCreatingColumn ? 'Creating...' : 'Create Column'}
-                </button>
-              </div>
-            </form>
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <Button variant="secondary" size="md" onClick={() => setIsColumnModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              isLoading={isCreatingColumn}
+              disabled={!newColumnName.trim()}
+            >
+              Create Column
+            </Button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
 
       {/* Create Task Full Modal */}
-      {isTaskModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsTaskModalOpen(false)}>
-          <div className="modal-content" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.2rem' }}>Create Task</h3>
-              <button onClick={() => setIsTaskModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)' }}>
-                <X size={18} />
-              </button>
-            </div>
+      <Modal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        title="Create Task"
+        subtitle={`Add a new task to ${project.name}`}
+      >
+        <form onSubmit={handleCreateFullTask} className="space-y-4">
+          <FormField label="Task Title" required>
+            <Input
+              placeholder="What needs to be done?"
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              required
+              autoFocus
+            />
+          </FormField>
 
-            <form onSubmit={handleCreateFullTask}>
-              <div className="input-group">
-                <label className="input-label">Task Title</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="What needs to be done?"
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  required
-                  autoFocus
-                />
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Column">
+              <Select
+                value={taskColumnId}
+                onChange={(e) => setTaskColumnId(e.target.value)}
+                options={columns.map((c) => ({ value: c.id, label: c.name }))}
+              />
+            </FormField>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="input-group">
-                  <label className="input-label">Column</label>
-                  <select
-                    className="input-field"
-                    value={taskColumnId}
-                    onChange={(e) => setTaskColumnId(e.target.value)}
-                  >
-                    {columns.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="input-group">
-                  <label className="input-label">Priority</label>
-                  <select
-                    className="input-field"
-                    value={taskPriority}
-                    onChange={(e) => setTaskPriority(e.target.value as TaskPriority)}
-                  >
-                    <option value="LOW">LOW</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="HIGH">HIGH</option>
-                    <option value="URGENT">URGENT</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Assignee</label>
-                <select
-                  className="input-field"
-                  value={taskAssigneeId}
-                  onChange={(e) => setTaskAssigneeId(e.target.value)}
-                >
-                  <option value="">-- Unassigned --</option>
-                  {orgMembers.map((m) => (
-                    <option key={m.userId} value={m.userId}>
-                      {m.user.name} ({m.user.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Description (Optional)</label>
-                <textarea
-                  className="input-field"
-                  placeholder="Add context, acceptance criteria, or technical details..."
-                  value={taskDescription}
-                  onChange={(e) => setTaskDescription(e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="input-group">
-                  <label className="input-label">Due Date</label>
-                  <input
-                    type="date"
-                    className="input-field"
-                    value={taskDueDate}
-                    onChange={(e) => setTaskDueDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label className="input-label">Estimated Hours</label>
-                  <input
-                    type="number"
-                    className="input-field"
-                    placeholder="e.g. 4"
-                    min={0.5}
-                    step={0.5}
-                    value={taskEstimatedHours}
-                    onChange={(e) => setTaskEstimatedHours(e.target.value ? Number(e.target.value) : '')}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1.5rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsTaskModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={isCreatingTask || !taskTitle.trim()}>
-                  {isCreatingTask ? 'Creating...' : 'Create Task'}
-                </button>
-              </div>
-            </form>
+            <FormField label="Priority">
+              <Select
+                value={taskPriority}
+                onChange={(e) => setTaskPriority(e.target.value as TaskPriority)}
+                options={[
+                  { value: 'LOW', label: 'LOW' },
+                  { value: 'MEDIUM', label: 'MEDIUM' },
+                  { value: 'HIGH', label: 'HIGH' },
+                  { value: 'URGENT', label: 'URGENT' },
+                ]}
+              />
+            </FormField>
           </div>
-        </div>
-      )}
+
+          <FormField label="Assignee">
+            <Select
+              value={taskAssigneeId}
+              onChange={(e) => setTaskAssigneeId(e.target.value)}
+              options={[
+                { value: '', label: '-- Unassigned --' },
+                ...orgMembers.map((m) => ({
+                  value: m.userId,
+                  label: `${m.user.name} (${m.user.email})`,
+                })),
+              ]}
+            />
+          </FormField>
+
+          <FormField label="Description (Optional)">
+            <Textarea
+              placeholder="Add details, acceptance criteria, or links..."
+              value={taskDescription}
+              onChange={(e) => setTaskDescription(e.target.value)}
+              rows={3}
+            />
+          </FormField>
+
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Due Date">
+              <Input
+                type="date"
+                value={taskDueDate}
+                onChange={(e) => setTaskDueDate(e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Estimated Hours">
+              <Input
+                type="number"
+                placeholder="e.g. 4"
+                min={0.5}
+                step={0.5}
+                value={taskEstimatedHours}
+                onChange={(e) =>
+                  setTaskEstimatedHours(e.target.value ? Number(e.target.value) : '')
+                }
+              />
+            </FormField>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+            <Button variant="secondary" size="md" onClick={() => setIsTaskModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              isLoading={isCreatingTask}
+              disabled={!taskTitle.trim()}
+            >
+              Create Task
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Task Detail Drawer */}
       {selectedTaskId && (

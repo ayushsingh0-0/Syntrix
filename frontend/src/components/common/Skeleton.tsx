@@ -26,7 +26,32 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   );
 };
 
-export const CardSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => {
+export const CardSkeleton: React.FC<{ className?: string; count?: number }> = ({
+  className = '',
+  count = 1,
+}) => {
+  const cards = Array.from({ length: count });
+
+  if (count > 1) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {cards.map((_, i) => (
+          <div key={i} className={`bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 ${className}`}>
+            <div className="flex items-center justify-between">
+              <Skeleton width="40%" height="16px" />
+              <Skeleton width="24px" height="24px" rounded="rounded-full" />
+            </div>
+            <Skeleton width="60%" height="28px" />
+            <div className="space-y-2 pt-2">
+              <Skeleton width="100%" height="12px" />
+              <Skeleton width="80%" height="12px" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className={`bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 ${className}`}>
       <div className="flex items-center justify-between">

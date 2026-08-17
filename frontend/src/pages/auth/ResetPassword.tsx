@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { Lock, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Lock, CheckCircle2, ShieldAlert, KeyRound } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context';
 import { getErrorMessage } from '../../utils/error';
+import { Button } from '../../components/common/Button';
+import { FormField, Input } from '../../components/common/FormComponents';
 
 export const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -40,86 +42,93 @@ export const ResetPassword: React.FC = () => {
 
   if (!token) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <div className="card" style={{ maxWidth: '420px', textAlign: 'center' }}>
-          <ShieldAlert size={48} color="var(--rose)" style={{ margin: '0 auto 12px auto' }} />
-          <h3>Invalid Reset Link</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', margin: '10px 0 20px 0' }}>
-            No security reset token was provided in the URL.
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 text-center space-y-4 animate-scale-up">
+          <div className="w-14 h-14 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto ring-1 ring-rose-500/20">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-100">Invalid Reset Link</h3>
+          <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+            No security reset token was found in the URL. Please request a new password reset link.
           </p>
-          <Link to="/forgot-password" className="btn btn-primary">
-            Request New Link
-          </Link>
+          <div className="pt-2">
+            <Link to="/forgot-password">
+              <Button variant="primary" size="md" fullWidth>
+                Request New Link
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div className="card" style={{ width: '100%', maxWidth: '420px', padding: '2.5rem 2rem' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.6rem', marginBottom: '6px' }}>Set new password</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+      <div className="absolute top-1/3 -right-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 z-10 animate-scale-up">
+        <div className="text-center mb-8">
+          <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-3.5 ring-1 ring-indigo-500/20 shadow-lg shadow-indigo-500/10">
+            <KeyRound className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Set new password</h1>
+          <p className="text-xs text-slate-400 mt-1.5">
             Must be at least 8 characters long
           </p>
         </div>
 
         {isSuccess ? (
-          <div style={{ textAlign: 'center', padding: '10px 0' }}>
-            <CheckCircle2 size={48} color="var(--emerald)" style={{ margin: '0 auto 12px auto' }} />
-            <h4 style={{ fontSize: '1.1rem', marginBottom: '8px' }}>Password Updated!</h4>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+          <div className="text-center py-2 space-y-4">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto ring-1 ring-emerald-500/20">
+              <CheckCircle2 className="w-7 h-7" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-100">Password Updated!</h3>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
               Your account password has been changed. You can now log in with your new credentials.
             </p>
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => navigate('/login')}>
-              Go to Sign In
-            </button>
+            <div className="pt-2">
+              <Button variant="primary" size="md" fullWidth onClick={() => navigate('/login')}>
+                Go to Sign In
+              </Button>
+            </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <label className="input-label">New Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="password"
-                  className="input-field"
-                  placeholder="••••••••"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  style={{ paddingLeft: '38px' }}
-                />
-                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              </div>
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormField label="New Password" required>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                leftIcon={<Lock className="w-4 h-4" />}
+                required
+                minLength={8}
+              />
+            </FormField>
 
-            <div className="input-group">
-              <label className="input-label">Confirm New Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="password"
-                  className="input-field"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  style={{ paddingLeft: '38px' }}
-                />
-                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              </div>
-            </div>
+            <FormField label="Confirm New Password" required>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                leftIcon={<Lock className="w-4 h-4" />}
+                required
+                minLength={8}
+              />
+            </FormField>
 
-            <button
+            <Button
               type="submit"
-              className="btn btn-primary"
-              disabled={isSubmitting}
-              style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }}
+              variant="primary"
+              size="md"
+              fullWidth
+              isLoading={isSubmitting}
+              className="mt-2"
             >
-              {isSubmitting ? 'Updating...' : 'Update Password'}
-            </button>
+              Update Password
+            </Button>
           </form>
         )}
       </div>
