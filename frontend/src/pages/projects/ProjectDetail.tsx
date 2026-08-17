@@ -13,6 +13,7 @@ import {
   Kanban,
   ListFilter,
   Flame,
+  BarChart2,
 } from 'lucide-react';
 
 import { useOrg, useToast } from '../../context';
@@ -256,6 +257,10 @@ export const ProjectDetail: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
+            <Link to={`/projects/${project.id}/analytics`} className="btn btn-secondary btn-sm">
+              <BarChart2 size={14} color="var(--primary)" />
+              <span>Analytics</span>
+            </Link>
             <Link to={`/projects/${project.id}/sprints`} className="btn btn-secondary btn-sm">
               <Flame size={14} color="var(--amber)" />
               <span>Sprints</span>

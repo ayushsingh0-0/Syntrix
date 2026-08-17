@@ -347,8 +347,5 @@ export interface Notification {
   createdAt: string;
 }
 
-
-
-
-
-
+export * from './search.types';
+export * from './dashboard.types';

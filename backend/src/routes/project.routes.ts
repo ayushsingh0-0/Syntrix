@@ -58,6 +58,10 @@ import boardRoutes from './board.routes';
 import taskRoutes from './task.routes';
 import sprintRoutes from './sprint.routes';
 
+// Project Analytics
+import { dashboardController } from '../controllers/dashboard.controller';
+router.get('/:projectId/analytics', asyncHandler(dashboardController.getProjectAnalytics));
+
 router.use('/:projectId/boards', boardRoutes);
 router.use('/:projectId/tasks', taskRoutes);
 router.use('/:projectId/sprints', sprintRoutes);

@@ -26,9 +26,7 @@ import { ProjectDetail } from './pages/projects/ProjectDetail';
 import { ProjectBoard } from './pages/projects/ProjectBoard';
 import { ProjectTaskList } from './pages/projects/ProjectTaskList';
 import { ProjectSprints } from './pages/projects/ProjectSprints';
-
-
-
+import { ProjectAnalytics } from './pages/projects/ProjectAnalytics';
 
 // Public Route Guard (Redirect to home if already logged in)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -86,6 +84,7 @@ export function App() {
                 <Route path="/projects/:projectId/board" element={<ProjectBoard />} />
                 <Route path="/projects/:projectId/tasks" element={<ProjectTaskList />} />
                 <Route path="/projects/:projectId/sprints" element={<ProjectSprints />} />
+                <Route path="/projects/:projectId/analytics" element={<ProjectAnalytics />} />
               </Route>
 
 

@@ -154,6 +154,15 @@ router.post('/:id/labels', authenticate, asyncHandler(requireOrgMember), require
 router.put('/:id/labels/:labelId', authenticate, asyncHandler(requireOrgMember), requireOrgPermission(OrgPermission.PROJECT_UPDATE), asyncHandler(labelController.updateLabel));
 router.delete('/:id/labels/:labelId', authenticate, asyncHandler(requireOrgMember), requireOrgPermission(OrgPermission.PROJECT_UPDATE), asyncHandler(labelController.deleteLabel));
 
+// Global Search
+import { searchController } from '../controllers/search.controller';
+router.get('/:id/search', authenticate, asyncHandler(requireOrgMember), asyncHandler(searchController.search));
+
+// Dashboard & Analytics
+import { dashboardController } from '../controllers/dashboard.controller';
+router.get('/:id/dashboard', authenticate, asyncHandler(requireOrgMember), asyncHandler(dashboardController.getOrgDashboard));
+router.get('/:id/dashboard/me', authenticate, asyncHandler(requireOrgMember), asyncHandler(dashboardController.getUserDashboard));
+
 export default router;
 
 
