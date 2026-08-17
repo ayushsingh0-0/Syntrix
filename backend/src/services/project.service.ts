@@ -19,6 +19,8 @@ import { findTeamById } from '../repositories/team.repository';
 import { findUserById } from '../repositories/user.repository';
 import { ProjectRole } from '../generated/prisma/client';
 import { OrgPermission, hasOrgPermission } from '../config/permissions';
+import { cacheService } from './cache.service';
+import { CacheKeys } from '../types/cache.types';
 import {
   CreateProjectInput,
   ProjectQueryParams,
@@ -66,6 +68,9 @@ export const createProjectService = async (
   }
 
   const project = await createProjectWithLead(orgId, userId, data);
+
+  // Invalidate cached organization metrics & dashboards
+  await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
 
   return {
     id: project.id,
@@ -187,6 +192,8 @@ export const updateProjectDetailsService = async (
   const updated = await updateProject(projectId, data);
   const callerMembership = await findProjectMember(projectId, actorUserId);
 
+  await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
+
   return {
     id: updated.id,
     organizationId: updated.organizationId,
@@ -225,6 +232,8 @@ export const archiveProjectService = async (
 
   const updated = await setProjectArchiveStatus(projectId, true);
   const callerMembership = await findProjectMember(projectId, actorUserId);
+
+  await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
 
   return {
     id: updated.id,
@@ -265,6 +274,8 @@ export const restoreProjectService = async (
   const updated = await setProjectArchiveStatus(projectId, false);
   const callerMembership = await findProjectMember(projectId, actorUserId);
 
+  await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
+
   return {
     id: updated.id,
     organizationId: updated.organizationId,
@@ -302,6 +313,7 @@ export const deleteProjectService = async (
   }
 
   await deleteProject(projectId);
+  await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
 };
 
 export const getProjectMembersService = async (

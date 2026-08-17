@@ -1,6 +1,8 @@
 import { BoardRepository } from '../repositories/board.repository';
 import { findProjectById } from '../repositories/project.repository';
 import { findOrgMember } from '../repositories/organization.repository';
+import { cacheService } from './cache.service';
+import { CacheKeys } from '../types/cache.types';
 import { ApiError } from '../utils/ApiError';
 import type {
   CreateBoardDTO,
@@ -172,7 +174,9 @@ export class BoardService {
       }
     }
 
-    return this.boardRepo.createTask(projectId, project.key, reporterId, data);
+    const created = await this.boardRepo.createTask(projectId, project.key, reporterId, data);
+    await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
+    return created;
   }
 
   /**
@@ -192,7 +196,9 @@ export class BoardService {
       }
     }
 
-    return this.boardRepo.updateTask(taskId, data);
+    const updated = await this.boardRepo.updateTask(taskId, data);
+    await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
+    return updated;
   }
 
   /**
@@ -225,7 +231,9 @@ export class BoardService {
       }
     }
 
-    return this.boardRepo.moveTask(taskId, data.columnId, data.targetPosition, derivedStatus);
+    const moved = await this.boardRepo.moveTask(taskId, data.columnId, data.targetPosition, derivedStatus);
+    await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
+    return moved;
   }
 
   /**
@@ -238,6 +246,8 @@ export class BoardService {
       throw new ApiError(404, 'Task not found in this project');
     }
 
-    return this.boardRepo.deleteTask(taskId);
+    const deleted = await this.boardRepo.deleteTask(taskId);
+    await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
+    return deleted;
   }
 }

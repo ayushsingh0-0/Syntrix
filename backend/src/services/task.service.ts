@@ -4,6 +4,8 @@ import { findProjectById } from '../repositories/project.repository';
 import { findOrgMember } from '../repositories/organization.repository';
 import { globalActivityService } from './activity.service';
 import { globalNotificationService } from './notification.service';
+import { cacheService } from './cache.service';
+import { CacheKeys } from '../types/cache.types';
 import { ApiError } from '../utils/ApiError';
 
 
@@ -146,8 +148,10 @@ export class TaskService {
       }
     }
 
-    return this.taskRepo.findTaskDetailsById(taskId);
+    // Invalidate cached dashboard & analytics for this organization
+    await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
 
+    return this.taskRepo.findTaskDetailsById(taskId);
   }
 
 
@@ -160,7 +164,9 @@ export class TaskService {
     if (!task || task.projectId !== projectId) {
       throw new ApiError(404, 'Task not found in this project');
     }
-    return this.boardRepo.deleteTask(taskId);
+    const result = await this.boardRepo.deleteTask(taskId);
+    await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));
+    return result;
   }
 
   /**
