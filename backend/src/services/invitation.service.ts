@@ -15,6 +15,8 @@ import { generateOpaqueToken, hashToken } from '../utils/token';
 import { InvitationStatus, OrganizationRole } from '../generated/prisma/client';
 import { canAssignRole } from '../config/permissions';
 import { SafeInvitation, InvitationPreview } from '../types/invitation.types';
+import { queueManager } from '../queues/queue.manager';
+import { EmailJobType } from '../types/queue.types';
 
 export const createOrganizationInvitation = async (
   orgId: string,
@@ -77,6 +79,15 @@ export const createOrganizationInvitation = async (
 
   console.log(`[INVITATION] Token generated for ${email} to join ${org.name}: ${rawToken}`);
 
+  // Enqueue invitation email in background queue
+  await queueManager.addEmailJob({
+    type: EmailJobType.INVITATION_EMAIL,
+    email,
+    inviterName: actingMember?.user?.name || 'A team member',
+    orgName: org.name,
+    token: rawToken,
+  });
+
   const safeInvitation: SafeInvitation = {
     id: invitation.id,
     organizationId: invitation.organizationId,
@@ -128,7 +139,14 @@ export const resendOrganizationInvitation = async (orgId: string, invitationId: 
 
   await updateInvitationToken(invitation.id, tokenHash, expiresAt);
 
-  console.log(`[INVITATION] Resent token for ${invitation.email}: ${rawToken}`);
+  // Enqueue resent invitation email
+  await queueManager.addEmailJob({
+    type: EmailJobType.INVITATION_EMAIL,
+    email: invitation.email,
+    inviterName: invitation.invitedBy?.name || 'A team member',
+    orgName: invitation.organization?.name || 'the organization',
+    token: rawToken,
+  });
 
   return {
     message: 'Invitation resent successfully',

@@ -1,5 +1,6 @@
 import { NotificationRepository } from '../repositories/notification.repository';
-import type { CreateNotificationDTO } from '../types/notification.types';
+import { queueManager } from '../queues/queue.manager';
+import { NotificationJobType } from '../types/queue.types';
 
 export class NotificationService {
   private notificationRepo: NotificationRepository;
@@ -34,7 +35,7 @@ export class NotificationService {
     return { success: true };
   }
 
-  // --- Trigger Dispatchers ---
+  // --- Trigger Dispatchers (Async via Queue) ---
 
   /**
    * Send notification when task is assigned/reassigned to a user
@@ -50,16 +51,15 @@ export class NotificationService {
   ) {
     if (!assigneeId || assigneeId === actorId) return;
 
-    await this.notificationRepo.createNotification({
-      userId: assigneeId,
+    await queueManager.addNotificationJob({
+      type: NotificationJobType.TASK_ASSIGNED,
+      assigneeId,
       actorId,
-      organizationId: orgId,
+      orgId,
       projectId,
       taskId,
-      type: 'TASK_ASSIGNED',
-      title: `Assigned to ${taskKey}`,
-      message: `You were assigned to task ${taskKey}: ${taskTitle}`,
-      data: { taskKey, taskTitle },
+      taskKey,
+      taskTitle,
     });
   }
 
@@ -79,22 +79,17 @@ export class NotificationService {
     const recipients = Array.from(new Set(mentionedUserIds)).filter((id) => id && id !== authorId);
     if (recipients.length === 0) return;
 
-    const truncated =
-      commentContent.length > 80 ? `${commentContent.substring(0, 80)}...` : commentContent;
-
-    const notifications: CreateNotificationDTO[] = recipients.map((userId) => ({
-      userId,
-      actorId: authorId,
-      organizationId: orgId,
+    await queueManager.addNotificationJob({
+      type: NotificationJobType.COMMENT_MENTION,
+      mentionedUserIds: recipients,
+      authorId,
+      authorName,
+      orgId,
       projectId,
       taskId,
-      type: 'COMMENT_MENTIONED',
-      title: `Mentioned by ${authorName} in ${taskKey}`,
-      message: `${authorName} mentioned you: "${truncated}"`,
-      data: { taskKey, taskId },
-    }));
-
-    await this.notificationRepo.createMany(notifications);
+      taskKey,
+      commentContent,
+    });
   }
 
   /**
@@ -114,20 +109,20 @@ export class NotificationService {
     const targetRecipients = Array.from(new Set(recipients)).filter((id) => id && id !== actorId);
     if (targetRecipients.length === 0) return;
 
-    const notifications: CreateNotificationDTO[] = targetRecipients.map((userId) => ({
-      userId,
+    await queueManager.addNotificationJob({
+      type: NotificationJobType.TASK_STATUS_CHANGED,
+      recipients: targetRecipients,
       actorId,
-      organizationId: orgId,
+      actorName,
+      orgId,
       projectId,
       taskId,
-      type: 'TASK_STATUS_CHANGED',
-      title: `Status Updated on ${taskKey}`,
-      message: `${actorName} moved ${taskKey} from ${fromStatus} to ${toStatus}`,
-      data: { taskKey, fromStatus, toStatus },
-    }));
-
-    await this.notificationRepo.createMany(notifications);
+      taskKey,
+      fromStatus,
+      toStatus,
+    });
   }
 }
 
 export const globalNotificationService = new NotificationService();
+
