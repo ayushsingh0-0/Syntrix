@@ -8,15 +8,13 @@ import { getErrorMessage } from '../../utils/error';
 export const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(!token ? 'error' : 'loading');
+  const [errorMessage, setErrorMessage] = useState(!token ? 'No verification token provided in URL.' : '');
   const { refreshUser } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
     if (!token) {
-      setStatus('error');
-      setErrorMessage('No verification token provided in URL.');
       return;
     }
 

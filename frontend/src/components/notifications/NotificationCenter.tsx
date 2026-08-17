@@ -39,30 +39,56 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onSelect
     }
   }, []);
 
-  const fetchNotifications = useCallback(async () => {
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadUnreadCount = async () => {
+      try {
+        const res = await api.get('/notifications/unread-count');
+        if (isMounted) {
+          setUnreadCount(res.data.data.unreadCount || 0);
+        }
+      } catch {
+        // Background poll failure is silent
+      }
+    };
+
+    loadUnreadCount();
+    const interval = setInterval(loadUnreadCount, 30000); // 30s heartbeat
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
     setIsLoading(true);
-    try {
-      const res = await api.get(`/notifications?unreadOnly=${activeFilter === 'unread'}`);
-      setNotifications(res.data.data.notifications || []);
-      setUnreadCount(res.data.data.meta.unreadCount || 0);
-    } catch (err: unknown) {
-      showToast('error', getErrorMessage(err, 'Failed to fetch notifications'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeFilter, showToast]);
+    api
+      .get(`/notifications?unreadOnly=${activeFilter === 'unread'}`)
+      .then((res) => {
+        if (isMounted) {
+          setNotifications(res.data.data.notifications || []);
+          setUnreadCount(res.data.data.meta.unreadCount || 0);
+        }
+      })
+      .catch((err: unknown) => {
+        if (isMounted) {
+          showToast('error', getErrorMessage(err, 'Failed to fetch notifications'));
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
 
-  useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // 30s heartbeat
-    return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotifications();
-    }
-  }, [isOpen, fetchNotifications]);
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, activeFilter, showToast]);
 
   // Click outside to close
   useEffect(() => {

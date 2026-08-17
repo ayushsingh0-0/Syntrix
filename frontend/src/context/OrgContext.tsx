@@ -98,8 +98,8 @@ export const OrgProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
     } else {
-      setOrgs([]);
-      setCurrentOrg(null);
+      setOrgs((prev) => (prev.length > 0 ? [] : prev));
+      setCurrentOrg((prev) => (prev !== null ? null : prev));
     }
 
     return () => {

@@ -9,7 +9,7 @@ import type { Invitation } from '../../types';
 export const InviteLanding: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const [preview, setPreview] = useState<Invitation | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(Boolean(token));
   const [isAccepting, setIsAccepting] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
   const { user } = useAuth();
@@ -20,7 +20,6 @@ export const InviteLanding: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     if (!token) {
-      setIsLoading(false);
       return;
     }
 
