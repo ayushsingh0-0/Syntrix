@@ -9,9 +9,13 @@ import { AttachmentController } from '../controllers/attachment.controller';
 import express from 'express';
 import path from 'path';
 import { asyncHandler } from '../utils/asyncHandler';
+import { globalApiLimiter } from '../middleware/rateLimit.middleware';
 
 const apiRouter = Router();
 const attachmentController = new AttachmentController();
+
+// Apply global rate limiting to all /api/v1 routes
+apiRouter.use(globalApiLimiter);
 
 apiRouter.use('/health', healthRoutes);
 apiRouter.use('/auth', authRoutes);

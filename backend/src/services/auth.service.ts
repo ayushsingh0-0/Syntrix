@@ -14,6 +14,9 @@ import { SafeUser } from '../types/user.types';
 import { logAuthEvent } from './audit.service';
 import { AuthAuditEvent } from '../generated/prisma/client';
 import prisma from '../config/prisma';
+import { queueManager } from '../queues/queue.manager';
+import { EmailJobType } from '../types/queue.types';
+import { cacheService } from './cache.service';
 
 export type AuthContext = {
   ipAddress?: string;
@@ -34,7 +37,14 @@ export const registerUser = async (name: string, email: string, password: string
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await createEmailVerificationToken(user.id, tokenHash, expiresAt);
 
-  console.log(`[AUTH] Email verification token generated for ${user.email}: ${rawVerificationToken}`);
+  // Enqueue verification email in background queue
+  await queueManager.addEmailJob({
+    type: EmailJobType.VERIFY_EMAIL,
+    email: user.email,
+    name: user.name,
+    token: rawVerificationToken,
+    expiresAt,
+  });
 
   await logAuthEvent({
     event: AuthAuditEvent.REGISTER_SUCCESS,
@@ -64,12 +74,28 @@ export const registerUser = async (name: string, email: string, password: string
   };
 };
 
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 minutes
+
 export const loginUser = async (email: string, password: string, context?: AuthContext) => {
-  const user = await findUserByEmail(email);
+  const normalizedEmail = email.toLowerCase().trim();
+  const lockKey = `syntrix:auth:locked:${normalizedEmail}`;
+  const failedKey = `syntrix:auth:failed:${normalizedEmail}`;
+
+  // Check if account is currently locked
+  const isLocked = await cacheService.get<boolean>(lockKey);
+  if (isLocked) {
+    throw new ApiError(
+      429,
+      'Account is temporarily locked due to too many failed login attempts. Please try again in 15 minutes or reset your password.'
+    );
+  }
+
+  const user = await findUserByEmail(normalizedEmail);
   if (!user) {
     await logAuthEvent({
       event: AuthAuditEvent.LOGIN_FAILED,
-      email,
+      email: normalizedEmail,
       ipAddress: context?.ipAddress,
       userAgent: context?.userAgent,
       metadata: { reason: 'User not found' },
@@ -79,16 +105,37 @@ export const loginUser = async (email: string, password: string, context?: AuthC
 
   const isPasswordValid = await comparePassword(password, user.password);
   if (!isPasswordValid) {
+    const currentFailed = (await cacheService.get<number>(failedKey)) || 0;
+    const newFailed = currentFailed + 1;
+
     await logAuthEvent({
       event: AuthAuditEvent.LOGIN_FAILED,
       userId: user.id,
       email: user.email,
       ipAddress: context?.ipAddress,
       userAgent: context?.userAgent,
-      metadata: { reason: 'Invalid password' },
+      metadata: { reason: 'Invalid password', attempt: newFailed },
     });
-    throw new ApiError(401, 'Invalid email or password');
+
+    if (newFailed >= MAX_FAILED_ATTEMPTS) {
+      await cacheService.set(lockKey, true, LOCKOUT_DURATION_SECONDS);
+      await cacheService.del(failedKey);
+      throw new ApiError(
+        429,
+        'Account has been temporarily locked for 15 minutes due to 5 consecutive failed login attempts.'
+      );
+    } else {
+      await cacheService.set(failedKey, newFailed, LOCKOUT_DURATION_SECONDS);
+      throw new ApiError(
+        401,
+        `Invalid email or password. (${MAX_FAILED_ATTEMPTS - newFailed} attempts remaining before account lockout)`
+      );
+    }
   }
+
+  // Clear failed attempt counters on successful login
+  await cacheService.del(failedKey);
+  await cacheService.del(lockKey);
 
   const { password: _, ...userData } = user;
   const accessToken = generateAccessToken(user.id, user.role);
@@ -229,7 +276,14 @@ export const forgotPassword = async (email: string, context?: AuthContext) => {
 
   await createPasswordResetToken(user.id, tokenHash, expiresAt);
 
-  console.log(`[AUTH] Password reset token generated for ${user.email}: ${rawToken}`);
+  // Enqueue password reset email in background queue
+  await queueManager.addEmailJob({
+    type: EmailJobType.RESET_PASSWORD,
+    email: user.email,
+    name: user.name,
+    token: rawToken,
+    expiresAt,
+  });
 
   await logAuthEvent({
     event: AuthAuditEvent.PASSWORD_RESET_REQUESTED,
@@ -319,7 +373,14 @@ export const resendVerificationEmail = async (email: string) => {
 
   await createEmailVerificationToken(user.id, tokenHash, expiresAt);
 
-  console.log(`[AUTH] Resent verification token for ${user.email}: ${rawToken}`);
+  // Enqueue verification email in background queue
+  await queueManager.addEmailJob({
+    type: EmailJobType.VERIFY_EMAIL,
+    email: user.email,
+    name: user.name,
+    token: rawToken,
+    expiresAt,
+  });
 
   return {
     message: 'If an unverified account with that email exists, a verification link has been sent.',

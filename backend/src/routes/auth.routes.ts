@@ -14,7 +14,7 @@ import {
 import { authenticate } from '../middleware/auth.middleware';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate.middleware';
-import { authLimiter } from '../middleware/rateLimit.middleware';
+import { authLimiter, passwordResetLimiter } from '../middleware/rateLimit.middleware';
 import {
   registerSchema,
   loginSchema,
@@ -33,8 +33,8 @@ authRouter.post('/refresh', asyncHandler(refresh));
 authRouter.post('/logout', asyncHandler(logout));
 authRouter.post('/logout-all', authenticate, asyncHandler(logoutAll));
 authRouter.post('/change-password', authenticate, validate(changePasswordSchema), asyncHandler(changePassword));
-authRouter.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), asyncHandler(forgotPassword));
-authRouter.post('/reset-password', authLimiter, validate(resetPasswordSchema), asyncHandler(resetPassword));
+authRouter.post('/forgot-password', passwordResetLimiter, validate(forgotPasswordSchema), asyncHandler(forgotPassword));
+authRouter.post('/reset-password', passwordResetLimiter, validate(resetPasswordSchema), asyncHandler(resetPassword));
 authRouter.post('/verify-email', validate(verifyEmailSchema), asyncHandler(verifyEmail));
 authRouter.post('/resend-verification', authLimiter, validate(resendVerificationSchema), asyncHandler(resendVerification));
 

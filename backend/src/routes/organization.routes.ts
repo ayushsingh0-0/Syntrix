@@ -156,12 +156,13 @@ router.delete('/:id/labels/:labelId', authenticate, asyncHandler(requireOrgMembe
 
 // Global Search
 import { searchController } from '../controllers/search.controller';
-router.get('/:id/search', authenticate, asyncHandler(requireOrgMember), asyncHandler(searchController.search));
+import { searchLimiter } from '../middleware/rateLimit.middleware';
+router.get('/:id/search', authenticate, asyncHandler(requireOrgMember), searchLimiter, asyncHandler(searchController.search));
 
 // Dashboard & Analytics
 import { dashboardController } from '../controllers/dashboard.controller';
-router.get('/:id/dashboard', authenticate, asyncHandler(requireOrgMember), asyncHandler(dashboardController.getOrgDashboard));
-router.get('/:id/dashboard/me', authenticate, asyncHandler(requireOrgMember), asyncHandler(dashboardController.getUserDashboard));
+router.get('/:id/dashboard', authenticate, asyncHandler(requireOrgMember), searchLimiter, asyncHandler(dashboardController.getOrgDashboard));
+router.get('/:id/dashboard/me', authenticate, asyncHandler(requireOrgMember), searchLimiter, asyncHandler(dashboardController.getUserDashboard));
 
 export default router;
 
