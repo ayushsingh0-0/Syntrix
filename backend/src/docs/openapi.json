@@ -1,0 +1,454 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Syntrix Enterprise Project Management API",
+    "version": "1.0.0",
+    "description": "Production-grade multi-tenant project management, agile sprints, and collaboration platform API.",
+    "contact": {
+      "name": "Syntrix Engineering Team",
+      "email": "engineering@syntrix.io"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Syntrix API v1 Gateway"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Standard JWT Bearer token in Authorization header."
+      },
+      "CookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refreshToken",
+        "description": "HttpOnly refresh token cookie for session renewal."
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["USER", "ADMIN"] },
+          "isEmailVerified": { "type": "boolean" },
+          "bio": { "type": "string", "nullable": true },
+          "avatarUrl": { "type": "string", "nullable": true },
+          "phone": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Organization": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "avatarUrl": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "organizationId": { "type": "string" },
+          "teamId": { "type": "string", "nullable": true },
+          "name": { "type": "string" },
+          "key": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["PLANNING", "ACTIVE", "ON_HOLD", "COMPLETED", "ARCHIVED"] },
+          "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"] },
+          "startDate": { "type": "string", "format": "date-time", "nullable": true },
+          "targetDate": { "type": "string", "format": "date-time", "nullable": true },
+          "isArchived": { "type": "boolean" },
+          "memberCount": { "type": "integer" }
+        }
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "projectId": { "type": "string" },
+          "columnId": { "type": "string" },
+          "sprintId": { "type": "string", "nullable": true },
+          "assigneeId": { "type": "string", "nullable": true },
+          "reporterId": { "type": "string" },
+          "key": { "type": "string" },
+          "number": { "type": "integer" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["TODO", "IN_PROGRESS", "REVIEW", "DONE", "CANCELLED"] },
+          "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"] },
+          "storyPoints": { "type": "number", "nullable": true },
+          "dueDate": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "StandardError": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "message": { "type": "string", "example": "Invalid credentials or resource not found" },
+          "errors": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "RateLimitError": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "example": "RATE_LIMIT_EXCEEDED" },
+              "message": { "type": "string", "example": "Too many requests. Please try again in 45 seconds." },
+              "retryAfterSeconds": { "type": "integer", "example": 45 }
+            }
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "example": 1 },
+          "limit": { "type": "integer", "example": 20 },
+          "total": { "type": "integer", "example": 54 },
+          "totalPages": { "type": "integer", "example": 3 },
+          "hasNextPage": { "type": "boolean", "example": true },
+          "hasPrevPage": { "type": "boolean", "example": false }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new user account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created successfully" },
+          "400": { "description": "Validation error" },
+          "409": { "description": "User already exists" },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Authenticate user credentials and receive access/refresh tokens",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authenticated successfully" },
+          "401": { "description": "Invalid credentials" },
+          "429": { "description": "Account locked or rate limit exceeded" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Rotate refresh token and obtain a fresh access token",
+        "security": [{ "CookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Token refreshed successfully" },
+          "401": { "description": "Invalid or revoked token" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Log out and revoke active refresh token",
+        "responses": {
+          "200": { "description": "Logged out successfully" }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get authenticated user profile",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Profile retrieved" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "Update authenticated user profile",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "bio": { "type": "string" },
+                  "avatarUrl": { "type": "string" },
+                  "phone": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated" }
+        }
+      }
+    },
+    "/organizations": {
+      "get": {
+        "tags": ["Organizations"],
+        "summary": "List organizations for authenticated user",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Organizations list" }
+        }
+      },
+      "post": {
+        "tags": ["Organizations"],
+        "summary": "Create a new organization workspace",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Organization created" }
+        }
+      }
+    },
+    "/organizations/{id}/dashboard": {
+      "get": {
+        "tags": ["Dashboards & Analytics"],
+        "summary": "Get organization delivery KPIs, velocity chart, and member workload",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Dashboard data retrieved" },
+          "403": { "description": "Forbidden - Not a member" }
+        }
+      }
+    },
+    "/organizations/{id}/search": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Search across tasks, projects, comments, and members",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["ALL", "PROJECTS", "TASKS", "COMMENTS", "MEMBERS"] } }
+        ],
+        "responses": {
+          "200": { "description": "Search results" }
+        }
+      }
+    },
+    "/organizations/{id}/projects": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "List paginated projects in organization",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated projects list" }
+        }
+      },
+      "post": {
+        "tags": ["Projects"],
+        "summary": "Create a new project in organization",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "key"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "key": { "type": "string" },
+                  "description": { "type": "string" },
+                  "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Project created" }
+        }
+      }
+    },
+    "/organizations/{id}/projects/{projectId}/analytics": {
+      "get": {
+        "tags": ["Dashboards & Analytics"],
+        "summary": "Get deep project progress, story points burn, and contributor capacity",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Project analytics retrieved" }
+        }
+      }
+    },
+    "/organizations/{id}/projects/{projectId}/tasks": {
+      "get": {
+        "tags": ["Tasks & Backlog"],
+        "summary": "List paginated tasks with filters",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "priority", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated task list" }
+        }
+      },
+      "post": {
+        "tags": ["Tasks & Backlog"],
+        "summary": "Create a new task in project",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "columnId": { "type": "string" },
+                  "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"] },
+                  "assigneeId": { "type": "string" },
+                  "storyPoints": { "type": "number" },
+                  "dueDate": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Task created" }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List in-app notifications for authenticated user",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "unreadOnly", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Notification list" }
+        }
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get total count of unread notifications",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Unread counter" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Observability & Health"],
+        "summary": "Get server health, database connectivity, and cache statistics",
+        "responses": {
+          "200": { "description": "Service operational health" }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["Observability & Health"],
+        "summary": "Get Prometheus plaintext or JSON system metrics",
+        "parameters": [
+          { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["prometheus", "json"] } }
+        ],
+        "responses": {
+          "200": { "description": "Metrics data in Prometheus or JSON format" }
+        }
+      }
+    }
+  }
+}
