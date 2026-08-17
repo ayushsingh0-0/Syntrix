@@ -1,5 +1,4 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { Request, Response } from 'express';
 import { CommentService } from '../services/comment.service';
 import { createCommentSchema, updateCommentSchema } from '../validations/comment.validation';
 
@@ -14,7 +13,7 @@ export class CommentController {
     this.commentService = new CommentService();
   }
 
-  listComments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  listComments = async (req: Request, res: Response): Promise<void> => {
     const orgId = getParam(req.params.id || req.params.orgId);
     const projectId = getParam(req.params.projectId);
     const taskId = getParam(req.params.taskId);
@@ -65,5 +64,4 @@ export class CommentController {
     await this.commentService.deleteComment(orgId, projectId, taskId, commentId, userId);
     res.status(200).json({ success: true, data: null, message: 'Comment deleted successfully' });
   };
-
 }
