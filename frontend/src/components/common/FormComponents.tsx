@@ -4,7 +4,7 @@ import React, { forwardRef } from 'react';
 export interface FormFieldProps {
   label?: string;
   error?: string;
-  helperText?: React.ReactNode;
+  helperText?: string;
   required?: boolean;
   children: React.ReactNode;
   className?: string;
@@ -35,7 +35,7 @@ export const FormField: React.FC<FormFieldProps> = ({
           <span>{error}</span>
         </p>
       ) : helperText ? (
-        <div className="text-xs text-slate-400 mt-1">{helperText}</div>
+        <p className="text-xs text-slate-400 mt-1">{helperText}</p>
       ) : null}
     </div>
   );

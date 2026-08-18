@@ -13,8 +13,8 @@ const app = express();
 // 1. Request tracing & Correlation IDs (very first middleware)
 app.use(correlationIdMiddleware);
 
-// 2. Structured HTTP access logging & latency monitoring
-app.use(httpLoggerMiddleware);
+// 2. Structured HTTP access logging & latency monitoring (disabled for clean dev terminal)
+// app.use(httpLoggerMiddleware);
 
 // 3. Core parsers & security middlewares
 app.use(express.json());

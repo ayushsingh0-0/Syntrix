@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Building2, ShieldCheck, CheckCircle2, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Building2, ShieldCheck, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth, useOrg, useToast } from '../../context';
 import { getErrorMessage } from '../../utils/error';
-import { Button } from '../../components/common/Button';
 import type { Invitation } from '../../types';
 
 export const InviteLanding: React.FC = () => {
@@ -20,27 +19,27 @@ export const InviteLanding: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    if (!token) return;
+    if (!token) {
+      return;
+    }
 
-    api
-      .get(`/invitations/${token}`)
-      .then((res) => {
-        if (isMounted) {
-          setPreview(res.data.data);
-          setIsLoading(false);
-        }
-      })
-      .catch((err: unknown) => {
-        if (isMounted) {
-          showToast('error', getErrorMessage(err, 'Invalid or expired invitation link'));
-          setIsLoading(false);
-        }
-      });
+    api.get(`/invitations/${token}`).then((res) => {
+      if (isMounted) {
+        setPreview(res.data.data);
+        setIsLoading(false);
+      }
+    }).catch((err: unknown) => {
+      if (isMounted) {
+        showToast('error', getErrorMessage(err, 'Invalid or expired invitation link'));
+        setIsLoading(false);
+      }
+    });
 
     return () => {
       isMounted = false;
     };
   }, [token, showToast]);
+
 
   const handleAccept = async () => {
     if (!user) {
@@ -66,83 +65,103 @@ export const InviteLanding: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-        <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
-        <p className="text-xs text-slate-400 mt-3 font-medium uppercase tracking-wider">
-          Loading invitation...
-        </p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <RefreshCw size={32} color="var(--primary)" style={{ animation: 'spin 1.5s linear infinite' }} />
       </div>
     );
   }
 
   if (!preview) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 text-center space-y-4 animate-scale-up">
-          <div className="w-14 h-14 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto ring-1 ring-rose-500/20">
-            <AlertCircle className="w-7 h-7" />
-          </div>
-          <h3 className="text-lg font-bold text-slate-100">Invitation Not Found</h3>
-          <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-            This invitation link is invalid, already used, or has expired.
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div className="card" style={{ maxWidth: '420px', textAlign: 'center' }}>
+          <h3>Invitation Not Found</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', margin: '10px 0 20px 0' }}>
+            This invitation link is invalid, already used, or expired.
           </p>
-          <div className="pt-2">
-            <Link to="/">
-              <Button variant="primary" size="md" fullWidth>
-                Go to Syntrix
-              </Button>
-            </Link>
-          </div>
+          <button className="btn btn-primary" onClick={() => navigate('/')}>
+            Go to Syntrix
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      <div className="absolute top-1/3 -right-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 text-center z-10 animate-scale-up">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-indigo-500/25 ring-1 ring-indigo-400/30">
-          <Building2 className="w-7 h-7" />
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        background: 'radial-gradient(ellipse at top, rgba(99, 102, 241, 0.15), transparent 70%), var(--bg-app)',
+      }}
+    >
+      <div className="card" style={{ width: '100%', maxWidth: '480px', padding: '2.5rem 2rem', textAlign: 'center' }}>
+        <div
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: 'var(--radius-xl)',
+            background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px auto',
+            color: '#fff',
+            boxShadow: '0 0 24px var(--primary-glow)',
+          }}
+        >
+          <Building2 size={28} />
         </div>
 
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Workspace Invitation</h1>
-        <p className="text-xs text-slate-400 mt-1 mb-6">
+        <h2 style={{ fontSize: '1.6rem', marginBottom: '6px' }}>Workspace Invitation</h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
           You have been invited to collaborate on Syntrix
         </p>
 
-        <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 mb-6 text-left space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">Organization</span>
-            <span className="text-sm font-bold text-slate-100">{preview.organization?.name}</span>
+        <div
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '16px',
+            marginBottom: '24px',
+            textAlign: 'left',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Organization</span>
+            <span style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+              {preview.organization?.name}
+            </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">Assigned Role</span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <ShieldCheck className="w-3.5 h-3.5" />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Assigned Role</span>
+            <span className="badge badge-primary">
+              <ShieldCheck size={12} />
               {preview.role}
             </span>
           </div>
         </div>
 
         {isAccepted ? (
-          <div className="py-2 space-y-2">
-            <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-            <h4 className="text-base font-semibold text-emerald-400">Invitation Accepted!</h4>
-            <p className="text-xs text-slate-400">Redirecting to workspace...</p>
+          <div>
+            <CheckCircle2 size={40} color="var(--emerald)" style={{ margin: '0 auto 10px auto' }} />
+            <h4 style={{ color: 'var(--emerald)' }}>Invitation Accepted!</h4>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Redirecting to workspace...</p>
           </div>
         ) : (
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            isLoading={isAccepting}
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '0.8rem' }}
             onClick={handleAccept}
-            rightIcon={<ArrowRight className="w-4 h-4" />}
+            disabled={isAccepting}
           >
-            {isAccepting ? 'Enrolling...' : 'Accept Invitation & Join'}
-          </Button>
+            <span>{isAccepting ? 'Enrolling...' : 'Accept Invitation & Join'}</span>
+            <ArrowRight size={16} />
+          </button>
         )}
       </div>
     </div>

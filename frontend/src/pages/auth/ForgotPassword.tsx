@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowLeft, CheckCircle2, KeyRound } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ArrowRight } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context';
 import { getErrorMessage } from '../../utils/error';
-import { Button } from '../../components/common/Button';
-import { FormField, Input } from '../../components/common/FormComponents';
+import { Logo } from '../../components/common/Logo';
 
 export const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,8 +14,6 @@ export const ForgotPassword: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-
     setIsSubmitting(true);
     try {
       await api.post('/auth/forgot-password', { email: email.trim() });
@@ -30,75 +27,241 @@ export const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Ambient background glow */}
-      <div className="absolute top-1/3 -left-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+    <div
+      style={{
+        minHeight: '100vh',
+        fontFamily: "'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, -apple-system, sans-serif",
+        color: '#20201D',
+        background:
+          'radial-gradient(circle at 12% 18%, rgba(245, 174, 77, 0.13), transparent 24%), radial-gradient(circle at 88% 82%, rgba(245, 174, 77, 0.10), transparent 22%), #F5F3EB',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        position: 'relative',
+        boxSizing: 'border-box',
+      }}
+    >
+      {/* Top Header */}
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '24px 48px',
+          zIndex: 10,
+        }}
+      >
+        <Logo size="md" to="/" />
+        <Link
+          to="/login"
+          style={{
+            fontSize: '13px',
+            fontWeight: 650,
+            color: '#20201D',
+            textDecoration: 'none',
+          }}
+        >
+          Sign in
+        </Link>
+      </header>
 
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 z-10 animate-scale-up">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-3.5 ring-1 ring-indigo-500/20 shadow-lg shadow-indigo-500/10">
-            <KeyRound className="w-6 h-6" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Reset password</h1>
-          <p className="text-xs text-slate-400 mt-1.5">
-            Enter your account email to receive reset instructions
-          </p>
-        </div>
-
-        {isSuccess ? (
-          <div className="text-center py-2 space-y-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto ring-1 ring-emerald-500/20">
-              <CheckCircle2 className="w-7 h-7" />
-            </div>
-            <h3 className="text-base font-semibold text-slate-100">Check your inbox</h3>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-              If an account exists for <span className="text-slate-200 font-medium">{email}</span>,
-              we have dispatched a secure password reset link.
-            </p>
-            <div className="pt-2">
-              <Link to="/login">
-                <Button variant="secondary" size="md" fullWidth>
-                  Return to Login
-                </Button>
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FormField label="Email Address" required>
-              <Input
-                type="email"
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                leftIcon={<Mail className="w-4 h-4" />}
-                required
-              />
-            </FormField>
-
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              fullWidth
-              isLoading={isSubmitting}
-              className="mt-2"
+      {/* Main Content */}
+      <main
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px 24px',
+          zIndex: 10,
+          boxSizing: 'border-box',
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '460px',
+            background: '#FFFDF8',
+            borderRadius: '24px',
+            padding: '40px 36px',
+            border: '1px solid #DDD9CC',
+            boxShadow: '0 20px 60px rgba(35, 31, 20, 0.08)',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <h1
+              style={{
+                fontSize: '28px',
+                fontWeight: 750,
+                letterSpacing: '-0.04em',
+                color: '#20201D',
+                marginBottom: '8px',
+              }}
             >
-              Send Reset Link
-            </Button>
+              Reset Password
+            </h1>
+            <p
+              style={{
+                fontSize: '14px',
+                color: '#77756D',
+                lineHeight: 1.5,
+                maxWidth: '300px',
+                margin: '0 auto',
+              }}
+            >
+              Enter your registered email to receive recovery instructions
+            </p>
+          </div>
 
-            <div className="text-center pt-3">
+          {isSuccess ? (
+            <div style={{ textAlign: 'center', padding: '12px 0' }}>
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: '#E4EEE5',
+                  color: '#52755A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px auto',
+                }}
+              >
+                <CheckCircle2 size={32} />
+              </div>
+              <h4 style={{ fontSize: '16px', fontWeight: 750, color: '#20201D', marginBottom: '8px' }}>
+                Check your inbox
+              </h4>
+              <p style={{ fontSize: '14px', color: '#77756D', marginBottom: '24px', lineHeight: 1.5 }}>
+                If an account exists for <strong>{email}</strong>, we've dispatched password reset instructions.
+              </p>
               <Link
                 to="/login"
-                className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '48px',
+                  backgroundColor: '#F5AE4D',
+                  color: '#20201D',
+                  borderRadius: '12px',
+                  fontWeight: 750,
+                  fontSize: '14px',
+                  textDecoration: 'none',
+                  boxShadow: '0 4px 12px rgba(245, 174, 77, 0.3)',
+                }}
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to login</span>
+                Return to Login
               </Link>
             </div>
-          </form>
-        )}
-      </div>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <div style={{ marginBottom: '20px', width: '100%' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 650, marginBottom: '8px', color: '#20201D' }}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    height: '48px',
+                    background: '#FFFDF8',
+                    border: '1px solid #DDD9CC',
+                    borderRadius: '12px',
+                    padding: '0 16px',
+                    fontSize: '14px',
+                    color: '#20201D',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#F5AE4D';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245, 174, 77, 0.18)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#DDD9CC';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  height: '48px',
+                  backgroundColor: '#F5AE4D',
+                  color: '#20201D',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontWeight: 750,
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 12px rgba(245, 174, 77, 0.3)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {isSubmitting ? <span>Sending...</span> : <span>Send Reset Link</span>}
+                <ArrowRight size={16} />
+              </button>
+
+              <div style={{ textAlign: 'center', marginTop: '22px' }}>
+                <Link
+                  to="/login"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '13px',
+                    color: '#77756D',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#20201D')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#77756D')}
+                >
+                  <ArrowLeft size={14} />
+                  <span>Back to login</span>
+                </Link>
+              </div>
+            </form>
+          )}
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer
+        style={{
+          textAlign: 'center',
+          padding: '24px 20px',
+          fontSize: '12px',
+          color: '#9A978D',
+          zIndex: 10,
+        }}
+      >
+        <span>Copyright @Syntrix 2026</span>
+        <span style={{ margin: '0 8px' }}>|</span>
+        <a href="#privacy" style={{ color: '#77756D' }}>
+          Privacy Policy
+        </a>
+      </footer>
     </div>
   );
 };
+
+export default ForgotPassword;

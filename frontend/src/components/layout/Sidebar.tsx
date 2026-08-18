@@ -7,11 +7,10 @@ import {
   UserPlus,
   Settings,
   Layers,
-  Sparkles,
 } from 'lucide-react';
 import { OrgSwitcher } from './OrgSwitcher';
 import { useOrg } from '../../context';
-
+import { Logo } from '../common/Logo';
 
 interface SidebarProps {
   onOpenCreateOrgModal: () => void;
@@ -19,7 +18,6 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateOrgModal }) => {
   const { hasPermission } = useOrg();
-
 
   const navItems = [
     { label: 'Overview', to: '/', icon: <LayoutDashboard size={18} /> },
@@ -45,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateOrgModal }) => {
       style={{
         width: 'var(--sidebar-width)',
         height: '100vh',
-        background: 'var(--bg-surface)',
+        background: '#FFFFFF',
         borderRight: '1px solid var(--border-subtle)',
         display: 'flex',
         flexDirection: 'column',
@@ -61,26 +59,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateOrgModal }) => {
           padding: '20px 20px 14px 20px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
         }}
       >
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: 'var(--radius-md)',
-            background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 16px var(--primary-glow)',
-          }}
-        >
-          <Sparkles size={18} color="#fff" />
-        </div>
-        <span style={{ fontSize: '1.2rem', fontWeight: '800', letterSpacing: '-0.03em', color: '#fff' }}>
-          SYNTRIX
-        </span>
+        <Logo size="md" to="/" />
       </div>
 
       {/* Org Switcher */}
@@ -90,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateOrgModal }) => {
 
       {/* Navigation */}
       <nav style={{ flex: 1, padding: '0 12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-muted)', padding: '8px 12px', textTransform: 'uppercase' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-muted)', padding: '8px 12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Workspace Menu
         </div>
         {navItems
@@ -105,9 +86,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateOrgModal }) => {
                 gap: '12px',
                 padding: '9px 14px',
                 borderRadius: 'var(--radius-md)',
-                color: isActive ? '#fff' : 'var(--text-secondary)',
-                background: isActive ? 'var(--primary-light)' : 'transparent',
-                border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
+                color: isActive ? '#1C1917' : 'var(--text-secondary)',
+                background: isActive ? '#FAF4EC' : 'transparent',
+                border: isActive ? '1px solid #F5B76E' : '1px solid transparent',
                 fontSize: '0.875rem',
                 fontWeight: isActive ? '700' : '500',
                 transition: 'all 0.15s ease',
@@ -121,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateOrgModal }) => {
 
       {/* Footer Info */}
       <div style={{ padding: '16px', borderTop: '1px solid var(--border-subtle)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        <div>Syntrix Platform v1.0.0</div>
+        <div style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Syntrix Platform v1.0.0</div>
         <div style={{ fontSize: '0.7rem' }}>Multi-Tenant Cloud</div>
       </div>
     </aside>

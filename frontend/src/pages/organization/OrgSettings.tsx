@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Trash2, ArrowRightLeft, ShieldAlert, Building2 } from 'lucide-react';
+import { Save, Trash2, ArrowRightLeft, ShieldAlert } from 'lucide-react';
 import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
 import { getErrorMessage } from '../../utils/error';
-import { Button } from '../../components/common/Button';
-import { FormField, Input, Select } from '../../components/common/FormComponents';
-import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import type { OrganizationMember } from '../../types';
 
 export const OrgSettings: React.FC = () => {
@@ -18,29 +15,20 @@ export const OrgSettings: React.FC = () => {
   const [logoUrl, setLogoUrl] = useState(currentOrg?.logoUrl || '');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Transfer Ownership
   const [newOwnerUserId, setNewOwnerUserId] = useState('');
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [isTransferring, setIsTransferring] = useState(false);
-  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-
-  // Delete Workspace
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     if (currentOrg) {
-      api
-        .get(`/organizations/${currentOrg.id}/members`)
-        .then((res) => {
-          if (isMounted) {
-            setMembers(res.data.data || []);
-          }
-        })
-        .catch(() => {
-          // silent
-        });
+      api.get(`/organizations/${currentOrg.id}/members`).then((res) => {
+        if (isMounted) {
+          setMembers(res.data.data || []);
+        }
+      }).catch(() => {
+        // ignore
+      });
     }
     return () => {
       isMounted = false;
@@ -66,8 +54,10 @@ export const OrgSettings: React.FC = () => {
     }
   };
 
-  const confirmTransferOwnership = async () => {
+  const handleTransferOwnership = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!currentOrg || !newOwnerUserId) return;
+    if (!confirm('Are you absolutely sure you want to transfer ownership of this organization? You will become an ADMIN.')) return;
 
     setIsTransferring(true);
     try {
@@ -75,7 +65,6 @@ export const OrgSettings: React.FC = () => {
         newOwnerUserId,
       });
       showToast('success', 'Organization ownership transferred successfully!');
-      setIsTransferDialogOpen(false);
       await refreshOrgs();
     } catch (err: unknown) {
       showToast('error', getErrorMessage(err, 'Failed to transfer ownership'));
@@ -84,92 +73,81 @@ export const OrgSettings: React.FC = () => {
     }
   };
 
-  const confirmDeleteOrg = async () => {
+  const handleDeleteOrg = async () => {
     if (!currentOrg) return;
-    setIsDeleting(true);
+    const confirmName = prompt(`To confirm deletion, please type the organization name "${currentOrg.name}":`);
+    if (confirmName !== currentOrg.name) {
+      showToast('error', 'Organization name did not match. Deletion cancelled.');
+      return;
+    }
+
     try {
       await api.delete(`/organizations/${currentOrg.id}`);
       showToast('success', 'Organization deleted.');
-      setIsDeleteDialogOpen(false);
       await refreshOrgs();
       navigate('/');
     } catch (err: unknown) {
       showToast('error', getErrorMessage(err, 'Failed to delete organization'));
-    } finally {
-      setIsDeleting(false);
     }
   };
 
   if (!currentOrg) return null;
 
-  const memberOptions = [
-    { value: '', label: '-- Choose an active member --' },
-    ...members
-      .filter((m) => m.role !== 'OWNER')
-      .map((m) => ({
-        value: m.userId,
-        label: `${m.user.name} (${m.user.email}) — ${m.role}`,
-      })),
-  ];
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Organization Settings</h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Manage workspace branding, identifiers, ownership, and destruction controls for{' '}
-          <span className="text-slate-200 font-semibold">{currentOrg.name}</span>
+    <div style={{ maxWidth: '840px', margin: '0 auto' }}>
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '1.8rem', marginBottom: '6px' }}>Organization Settings</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          Manage workspace branding, identifiers, ownership, and destruction controls
         </p>
       </div>
 
       {/* General Settings */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg">
-        <h3 className="text-base font-semibold text-slate-100 mb-4 flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-indigo-400" />
-          <span>Workspace Details</span>
-        </h3>
+      <div className="card" style={{ marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem' }}>Workspace Details</h3>
 
-        <form onSubmit={handleUpdate} className="space-y-4">
-          <FormField label="Workspace Name" required>
-            <Input
+        <form onSubmit={handleUpdate}>
+          <div className="input-group">
+            <label className="input-label">Workspace Name</label>
+            <input
               type="text"
+              className="input-field"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               disabled={!hasPermission('ORG_UPDATE')}
             />
-          </FormField>
+          </div>
 
-          <FormField label="Workspace Slug (Unique URI Identifier)">
-            <Input
+          <div className="input-group">
+            <label className="input-label">Workspace Slug (Unique URI Identifier)</label>
+            <input
               type="text"
+              className="input-field"
               value={currentOrg.slug}
               disabled
-              className="opacity-70 font-mono text-slate-400 cursor-not-allowed"
+              style={{ opacity: 0.7, fontFamily: 'var(--font-mono)' }}
             />
-          </FormField>
+          </div>
 
-          <FormField label="Logo Image URL">
-            <Input
+          <div className="input-group">
+            <label className="input-label">Logo Image URL</label>
+            <input
               type="url"
+              className="input-field"
               placeholder="https://example.com/logo.png"
               value={logoUrl}
               onChange={(e) => setLogoUrl(e.target.value)}
               disabled={!hasPermission('ORG_UPDATE')}
             />
-          </FormField>
+          </div>
 
           {hasPermission('ORG_UPDATE') && (
-            <div className="flex justify-end pt-2">
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                isLoading={isUpdating}
-                leftIcon={<Save className="w-4 h-4" />}
-              >
-                Save Settings
-              </Button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button type="submit" className="btn btn-primary" disabled={isUpdating}>
+                <Save size={16} />
+                <span>{isUpdating ? 'Saving...' : 'Save Settings'}</span>
+              </button>
             </div>
           )}
         </form>
@@ -177,89 +155,71 @@ export const OrgSettings: React.FC = () => {
 
       {/* Transfer Ownership (OWNER only) */}
       {myRole === 'OWNER' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-              <ArrowRightLeft className="w-5 h-5 text-violet-400" />
-              <span>Transfer Ownership</span>
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Transfer primary ownership of this organization to another active member. You will
-              automatically retain ADMIN privileges.
-            </p>
-          </div>
+        <div className="card" style={{ marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Transfer Ownership</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+            Transfer primary ownership of this organization to another active member. You will automatically retain ADMIN privileges.
+          </p>
 
-          <FormField label="Select Successor Member" required>
-            <Select
-              options={memberOptions}
-              value={newOwnerUserId}
-              onChange={(e) => setNewOwnerUserId(e.target.value)}
-            />
-          </FormField>
+          <form onSubmit={handleTransferOwnership}>
+            <div className="input-group">
+              <label className="input-label">Select Successor Member</label>
+              <select
+                className="input-field"
+                value={newOwnerUserId}
+                onChange={(e) => setNewOwnerUserId(e.target.value)}
+                required
+              >
+                <option value="">-- Choose an active member --</option>
+                {members
+                  .filter((m) => m.role !== 'OWNER')
+                  .map((m) => (
+                    <option key={m.userId} value={m.userId}>
+                      {m.user.name} ({m.user.email}) - {m.role}
+                    </option>
+                  ))}
+              </select>
+            </div>
 
-          <div className="flex justify-end pt-1">
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              disabled={!newOwnerUserId}
-              onClick={() => setIsTransferDialogOpen(true)}
-              leftIcon={<ArrowRightLeft className="w-4 h-4" />}
-            >
-              Transfer Ownership
-            </Button>
-          </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button
+                type="submit"
+                className="btn btn-secondary"
+                disabled={isTransferring || !newOwnerUserId}
+              >
+                <ArrowRightLeft size={16} />
+                <span>{isTransferring ? 'Transferring...' : 'Transfer Ownership'}</span>
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
       {/* Danger Zone */}
       {myRole === 'OWNER' && (
-        <div className="bg-rose-950/20 border border-rose-500/30 rounded-xl p-6 shadow-lg space-y-4">
-          <div className="flex items-center gap-2.5 text-rose-400 font-semibold">
-            <ShieldAlert className="w-5 h-5" />
-            <h3 className="text-base">Danger Zone</h3>
+        <div
+          className="card"
+          style={{
+            borderColor: 'rgba(244, 63, 94, 0.3)',
+            background: 'rgba(244, 63, 94, 0.04)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+            <ShieldAlert size={20} color="var(--rose)" />
+            <h3 style={{ fontSize: '1.2rem', color: 'var(--rose)' }}>Danger Zone</h3>
           </div>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Permanently delete this organization, including all associated teams, projects, task
-            boards, and member records. This action is irreversible.
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+            Permanently delete this organization, including all associated teams, projects, task boards, and member records. This action cannot be undone.
           </p>
 
-          <div className="flex justify-end pt-2">
-            <Button
-              variant="danger"
-              size="md"
-              onClick={() => setIsDeleteDialogOpen(true)}
-              leftIcon={<Trash2 className="w-4 h-4" />}
-            >
-              Delete Organization
-            </Button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="btn btn-danger" onClick={handleDeleteOrg}>
+              <Trash2 size={16} />
+              <span>Delete Organization</span>
+            </button>
           </div>
         </div>
       )}
-
-      {/* Transfer Ownership Dialog */}
-      <ConfirmDialog
-        isOpen={isTransferDialogOpen}
-        onClose={() => setIsTransferDialogOpen(false)}
-        onConfirm={confirmTransferOwnership}
-        isLoading={isTransferring}
-        title="Confirm Ownership Transfer"
-        message="Are you absolutely sure you want to transfer ownership of this workspace? You will be downgraded to ADMIN."
-        confirmText="Transfer Ownership"
-        variant="warning"
-      />
-
-      {/* Delete Workspace Dialog */}
-      <ConfirmDialog
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={confirmDeleteOrg}
-        isLoading={isDeleting}
-        title={`Delete ${currentOrg.name}`}
-        message="Are you sure you want to permanently delete this organization and all its data? All projects, tasks, and audit logs will be permanently deleted."
-        confirmText="Delete Workspace"
-        variant="danger"
-      />
     </div>
   );
 };

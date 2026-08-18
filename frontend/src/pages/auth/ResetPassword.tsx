@@ -1,137 +1,263 @@
 import React, { useState } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { Lock, CheckCircle2, ShieldAlert, KeyRound } from 'lucide-react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context';
 import { getErrorMessage } from '../../utils/error';
-import { Button } from '../../components/common/Button';
-import { FormField, Input } from '../../components/common/FormComponents';
+import { Logo } from '../../components/common/Logo';
 
 export const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
-  const [newPassword, setNewPassword] = useState('');
+  const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      showToast('error', 'Passwords do not match');
+    if (password.length < 8) {
+      showToast('error', 'Password must be at least 8 characters long');
       return;
     }
-    if (newPassword.length < 8) {
-      showToast('error', 'Password must be at least 8 characters');
+    if (password !== confirmPassword) {
+      showToast('error', 'Passwords do not match');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await api.post('/auth/reset-password', { token, newPassword });
-      setIsSuccess(true);
-      showToast('success', 'Password reset successfully! Please sign in.');
+      await api.post('/auth/reset-password', { token, password });
+      showToast('success', 'Password reset successfully. Please sign in.');
+      navigate('/login');
     } catch (err: unknown) {
-      showToast('error', getErrorMessage(err, 'Password reset link is invalid or expired.'));
+      showToast('error', getErrorMessage(err, 'Failed to reset password. Link may be invalid or expired.'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!token) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 text-center space-y-4 animate-scale-up">
-          <div className="w-14 h-14 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto ring-1 ring-rose-500/20">
-            <ShieldAlert className="w-7 h-7" />
-          </div>
-          <h3 className="text-lg font-bold text-slate-100">Invalid Reset Link</h3>
-          <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-            No security reset token was found in the URL. Please request a new password reset link.
-          </p>
-          <div className="pt-2">
-            <Link to="/forgot-password">
-              <Button variant="primary" size="md" fullWidth>
-                Request New Link
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      <div className="absolute top-1/3 -right-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+    <div
+      style={{
+        minHeight: '100vh',
+        fontFamily: "'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, -apple-system, sans-serif",
+        color: '#20201D',
+        background:
+          'radial-gradient(circle at 12% 18%, rgba(245, 174, 77, 0.13), transparent 24%), radial-gradient(circle at 88% 82%, rgba(245, 174, 77, 0.10), transparent 22%), #F5F3EB',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        position: 'relative',
+        boxSizing: 'border-box',
+      }}
+    >
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '24px 48px',
+          zIndex: 10,
+        }}
+      >
+        <Logo size="md" to="/" />
+        <Link
+          to="/login"
+          style={{
+            fontSize: '13px',
+            fontWeight: 650,
+            color: '#20201D',
+            textDecoration: 'none',
+          }}
+        >
+          Sign in
+        </Link>
+      </header>
 
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 z-10 animate-scale-up">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-3.5 ring-1 ring-indigo-500/20 shadow-lg shadow-indigo-500/10">
-            <KeyRound className="w-6 h-6" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Set new password</h1>
-          <p className="text-xs text-slate-400 mt-1.5">
-            Must be at least 8 characters long
-          </p>
-        </div>
-
-        {isSuccess ? (
-          <div className="text-center py-2 space-y-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto ring-1 ring-emerald-500/20">
-              <CheckCircle2 className="w-7 h-7" />
-            </div>
-            <h3 className="text-base font-semibold text-slate-100">Password Updated!</h3>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-              Your account password has been changed. You can now log in with your new credentials.
+      <main
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px 24px',
+          zIndex: 10,
+          boxSizing: 'border-box',
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '460px',
+            background: '#FFFDF8',
+            borderRadius: '24px',
+            padding: '40px 36px',
+            border: '1px solid #DDD9CC',
+            boxShadow: '0 20px 60px rgba(35, 31, 20, 0.08)',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <h1
+              style={{
+                fontSize: '28px',
+                fontWeight: 750,
+                letterSpacing: '-0.04em',
+                color: '#20201D',
+                marginBottom: '8px',
+              }}
+            >
+              Set New Password
+            </h1>
+            <p style={{ fontSize: '14px', color: '#77756D', lineHeight: 1.5 }}>
+              Create a secure new password for your account
             </p>
-            <div className="pt-2">
-              <Button variant="primary" size="md" fullWidth onClick={() => navigate('/login')}>
-                Go to Sign In
-              </Button>
-            </div>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FormField label="New Password" required>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                leftIcon={<Lock className="w-4 h-4" />}
-                required
-                minLength={8}
-              />
-            </FormField>
 
-            <FormField label="Confirm New Password" required>
-              <Input
-                type="password"
-                placeholder="••••••••"
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '18px', width: '100%' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 650, marginBottom: '8px', color: '#20201D' }}>
+                New Password
+              </label>
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="At least 8 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    height: '48px',
+                    background: '#FFFDF8',
+                    border: '1px solid #DDD9CC',
+                    borderRadius: '12px',
+                    padding: '0 48px 0 16px',
+                    fontSize: '14px',
+                    color: '#20201D',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#F5AE4D';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245, 174, 77, 0.18)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#DDD9CC';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#77756D',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '4px',
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '22px', width: '100%' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 650, marginBottom: '8px', color: '#20201D' }}>
+                Confirm Password
+              </label>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Re-enter password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                leftIcon={<Lock className="w-4 h-4" />}
                 required
                 minLength={8}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  height: '48px',
+                  background: '#FFFDF8',
+                  border: '1px solid #DDD9CC',
+                  borderRadius: '12px',
+                  padding: '0 16px',
+                  fontSize: '14px',
+                  color: '#20201D',
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#F5AE4D';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245, 174, 77, 0.18)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#DDD9CC';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
-            </FormField>
+            </div>
 
-            <Button
+            <button
               type="submit"
-              variant="primary"
-              size="md"
-              fullWidth
-              isLoading={isSubmitting}
-              className="mt-2"
+              disabled={isSubmitting}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                width: '100%',
+                height: '48px',
+                backgroundColor: '#F5AE4D',
+                color: '#20201D',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: 750,
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 12px rgba(245, 174, 77, 0.3)',
+                transition: 'all 0.2s',
+              }}
             >
-              Update Password
-            </Button>
+              {isSubmitting ? <span>Updating...</span> : <span>Update Password</span>}
+              <ArrowRight size={16} />
+            </button>
           </form>
-        )}
-      </div>
+        </div>
+      </main>
+
+      <footer
+        style={{
+          textAlign: 'center',
+          padding: '24px 20px',
+          fontSize: '12px',
+          color: '#9A978D',
+          zIndex: 10,
+        }}
+      >
+        <span>Copyright @Syntrix 2026</span>
+        <span style={{ margin: '0 8px' }}>|</span>
+        <a href="#privacy" style={{ color: '#77756D' }}>
+          Privacy Policy
+        </a>
+      </footer>
     </div>
   );
 };
+
+export default ResetPassword;
