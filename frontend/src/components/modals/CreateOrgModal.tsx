@@ -43,14 +43,14 @@ export const CreateOrgModal: React.FC<CreateOrgModalProps> = ({ isOpen, onClose 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
+                width: '38px',
+                height: '38px',
                 borderRadius: 'var(--radius-md)',
-                background: 'var(--primary-light)',
+                background: 'var(--primary-soft)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--primary)',
+                color: '#20201D',
               }}
             >
               <Building2 size={20} />

@@ -1,60 +1,13 @@
-import React, { createContext, useContext, useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useContext } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-
-// ============================================================================
-// Types & Context
-// ============================================================================
-
-export interface Margin {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
-}
-
-interface BarSeriesConfig {
-  dataKey: string;
-  fill?: string;
-  stroke?: string;
-  lineCap?: 'round' | 'butt' | number;
-  animationType?: 'grow' | 'fade';
-  fadedOpacity?: number;
-  perspective?: boolean;
-}
-
-interface BarChartContextValue {
-  data: any[];
-  xDataKey: string;
-  margin: Margin;
-  chartWidth: number;
-  chartHeight: number;
-  barGap: number;
-  barWidth?: number;
-  orientation: 'vertical' | 'horizontal';
-  stacked: boolean;
-  activeHoverIndex: number | null;
-  setActiveHoverIndex: (idx: number | null) => void;
-  hoverPos: { x: number; y: number } | null;
-  setHoverPos: (pos: { x: number; y: number } | null) => void;
-  series: BarSeriesConfig[];
-  registerSeries: (cfg: BarSeriesConfig) => void;
-  status?: 'loading' | 'ready';
-  maxValue: number;
-}
-
-const BarChartContext = createContext<BarChartContextValue | null>(null);
-
-export const useBarChart = () => {
-  const ctx = useContext(BarChartContext);
-  if (!ctx) throw new Error('useBarChart must be used within <BarChart>');
-  return ctx;
-};
+import { BarChartContext, useBarChart, type Margin, type BarSeriesConfig } from './chart-context';
+import { LineChartContext } from './line-context';
 
 // ============================================================================
 // 1. Root Component: <BarChart>
 // ============================================================================
 
-export interface BarChartProps<T = any> {
+export interface BarChartProps<T extends object = Record<string, unknown>> {
   data: T[];
   xDataKey?: string;
   margin?: Partial<Margin>;
@@ -70,7 +23,7 @@ export interface BarChartProps<T = any> {
   children: React.ReactNode;
 }
 
-export function BarChart<T extends Record<string, any>>({
+export function BarChart<T extends object>({
   data,
   xDataKey = 'name',
   margin: customMargin,
@@ -87,7 +40,6 @@ export function BarChart<T extends Record<string, any>>({
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeHoverIndex, setActiveHoverIndex] = useState<number | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
-  const [series, setSeries] = useState<BarSeriesConfig[]>([]);
 
   const margin: Margin = {
     top: customMargin?.top ?? 24,
@@ -96,31 +48,49 @@ export function BarChart<T extends Record<string, any>>({
     left: customMargin?.left ?? 36,
   };
 
-  const registerSeries = (cfg: BarSeriesConfig) => {
-    setSeries((prev) => {
-      if (prev.some((s) => s.dataKey === cfg.dataKey)) return prev;
-      return [...prev, cfg];
+  // Inspect children synchronously to extract all series configurations immediately
+  const series = useMemo<BarSeriesConfig[]>(() => {
+    const collected: BarSeriesConfig[] = [];
+    React.Children.forEach(children, (child) => {
+      if (React.isValidElement(child)) {
+        const props = child.props as Record<string, unknown>;
+        if (typeof props.dataKey === 'string') {
+          collected.push({
+            dataKey: props.dataKey,
+            fill: typeof props.fill === 'string' ? props.fill : undefined,
+            stroke: typeof props.stroke === 'string' ? props.stroke : undefined,
+            lineCap: (props.lineCap as 'round' | 'butt' | number | undefined) ?? 'round',
+            animationType: (props.animationType as 'grow' | 'fade' | undefined) ?? 'grow',
+            fadedOpacity: typeof props.fadedOpacity === 'number' ? props.fadedOpacity : 0.3,
+            perspective: Boolean(props.perspective),
+          });
+        }
+      }
     });
-  };
+    return collected;
+  }, [children]);
 
+  // Compute maximum value across all registered series
   const dataKeys = series.map((s) => s.dataKey);
-  let maxValue = 5;
+  let computedMax = 5;
+
+  const rawData = data as unknown as Record<string, unknown>[];
 
   if (stacked) {
-    data.forEach((d) => {
+    rawData.forEach((d) => {
       const sum = dataKeys.reduce((acc, k) => acc + (Number(d[k]) || 0), 0);
-      if (sum > maxValue) maxValue = sum;
+      if (sum > computedMax) computedMax = sum;
     });
   } else {
-    data.forEach((d) => {
+    rawData.forEach((d) => {
       dataKeys.forEach((k) => {
         const val = Number(d[k]) || 0;
-        if (val > maxValue) maxValue = val;
+        if (val > computedMax) computedMax = val;
       });
     });
   }
 
-  maxValue = Math.ceil(maxValue * 1.15);
+  const maxValue = Math.max(Math.ceil(computedMax * 1.15), 1);
 
   const viewBoxWidth = 600;
   const viewBoxHeight = 280;
@@ -134,7 +104,7 @@ export function BarChart<T extends Record<string, any>>({
   return (
     <BarChartContext.Provider
       value={{
-        data,
+        data: rawData,
         xDataKey,
         margin,
         chartWidth: innerWidth,
@@ -148,7 +118,6 @@ export function BarChart<T extends Record<string, any>>({
         hoverPos,
         setHoverPos,
         series,
-        registerSeries,
         status,
         maxValue,
       }}
@@ -172,6 +141,20 @@ export function BarChart<T extends Record<string, any>>({
           viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
           style={{ width: '100%', height: '100%', overflow: 'visible', display: 'block' }}
         >
+          {/* Subtle hover background highlight for active column */}
+          {activeHoverIndex !== null && rawData.length > 0 && (
+            <rect
+              x={margin.left + activeHoverIndex * (innerWidth / rawData.length)}
+              y={margin.top}
+              width={innerWidth / rawData.length}
+              height={innerHeight}
+              fill="var(--surface-secondary, rgba(238, 234, 223, 0.45))"
+              rx={6}
+              ry={6}
+              style={{ transition: 'all 0.15s ease' }}
+            />
+          )}
+
           {children}
         </svg>
       </div>
@@ -180,7 +163,7 @@ export function BarChart<T extends Record<string, any>>({
 }
 
 // ============================================================================
-// 2. Grid Component: <Grid>
+// 2. Universal Grid Component: <Grid> (Works in BarChart AND LineChart)
 // ============================================================================
 
 export interface GridProps {
@@ -198,7 +181,13 @@ export const Grid: React.FC<GridProps> = ({
   numTicks = 4,
   stroke = 'var(--border, #DDD9CC)',
 }) => {
-  const { data, margin, chartWidth, chartHeight } = useBarChart();
+  const barCtx = useContext(BarChartContext);
+  const lineCtx = useContext(LineChartContext);
+  const ctx = barCtx || lineCtx;
+
+  if (!ctx) return null;
+
+  const { data, margin, chartWidth, chartHeight } = ctx;
 
   const lines = [];
   if (horizontal) {
@@ -213,7 +202,7 @@ export const Grid: React.FC<GridProps> = ({
           y2={y}
           stroke={stroke}
           strokeDasharray="4 4"
-          strokeOpacity={0.45}
+          strokeOpacity={0.5}
         />
       );
     }
@@ -264,7 +253,7 @@ export const Bar: React.FC<BarProps> = ({
   lineCap = 'round',
   animate = true,
   animationType = 'grow',
-  fadedOpacity = 0.35,
+  fadedOpacity = 0.3,
   minBarHeight = 3,
   staggerDelay,
 }) => {
@@ -277,20 +266,15 @@ export const Bar: React.FC<BarProps> = ({
     setActiveHoverIndex,
     setHoverPos,
     series,
-    registerSeries,
     maxValue,
     stacked,
   } = useBarChart();
 
-  React.useEffect(() => {
-    registerSeries({ dataKey, fill, lineCap, animationType, fadedOpacity });
-  }, [dataKey, fill, lineCap, animationType, fadedOpacity]);
-
-  const seriesIndex = series.findIndex((s) => s.dataKey === dataKey);
+  const seriesIndex = Math.max(series.findIndex((s) => s.dataKey === dataKey), 0);
   const totalSeries = Math.max(series.length, 1);
-  const groupWidth = chartWidth / data.length;
+  const groupWidth = data.length > 0 ? chartWidth / data.length : chartWidth;
 
-  const radiusVal = typeof lineCap === 'number' ? lineCap : lineCap === 'round' ? 4 : 0;
+  const radiusVal = typeof lineCap === 'number' ? lineCap : lineCap === 'round' ? 5 : 0;
 
   return (
     <g className={`bklit-bar-series-${dataKey}`}>
@@ -299,12 +283,12 @@ export const Bar: React.FC<BarProps> = ({
         const barHeight = Math.max((val / maxValue) * chartHeight, val > 0 ? minBarHeight : 0);
 
         let x = margin.left + idx * groupWidth;
-        let w = groupWidth * 0.7;
+        let w = groupWidth * 0.72;
 
         if (!stacked && totalSeries > 1) {
           const subWidth = w / totalSeries;
           x += (groupWidth - w) / 2 + seriesIndex * subWidth;
-          w = subWidth * 0.85;
+          w = subWidth * 0.88;
         } else {
           x += (groupWidth - w) / 2;
         }
@@ -316,7 +300,7 @@ export const Bar: React.FC<BarProps> = ({
 
         return (
           <g
-            key={idx}
+            key={`${dataKey}-${idx}`}
             onMouseEnter={(e) => {
               setActiveHoverIndex(idx);
               const rect = e.currentTarget.getBoundingClientRect();
@@ -324,6 +308,7 @@ export const Bar: React.FC<BarProps> = ({
             }}
             style={{ cursor: 'pointer' }}
           >
+            {/* Transparent hit target */}
             <rect
               x={margin.left + idx * groupWidth}
               y={margin.top}
@@ -332,24 +317,30 @@ export const Bar: React.FC<BarProps> = ({
               fill="transparent"
             />
 
+            {/* Spring animated Bar */}
             <motion.rect
               x={x}
-              y={y}
-              width={w}
-              height={barHeight}
+              width={Math.max(w, 4)}
               rx={radiusVal}
               ry={radiusVal}
               fill={fill}
-              initial={animate ? (animationType === 'grow' ? { height: 0, y: margin.top + chartHeight } : { opacity: 0 }) : undefined}
+              initial={
+                animate
+                  ? animationType === 'grow'
+                    ? { y: margin.top + chartHeight, height: 0, opacity: 0 }
+                    : { y, height: barHeight, opacity: 0 }
+                  : { y, height: barHeight, opacity }
+              }
               animate={{
-                height: barHeight,
                 y,
+                height: barHeight,
                 opacity,
               }}
               transition={{
-                duration: 0.65,
-                delay: staggerDelay ?? idx * 0.04 + seriesIndex * 0.08,
-                ease: [0.16, 1, 0.3, 1],
+                type: 'spring',
+                stiffness: 140,
+                damping: 18,
+                delay: staggerDelay ?? idx * 0.03 + seriesIndex * 0.06,
               }}
             />
           </g>
@@ -379,7 +370,7 @@ export const BarSquares: React.FC<BarSquaresProps> = ({
   const { data, margin, chartWidth, chartHeight, maxValue, activeHoverIndex, setActiveHoverIndex, setHoverPos } =
     useBarChart();
 
-  const groupWidth = chartWidth / data.length;
+  const groupWidth = data.length > 0 ? chartWidth / data.length : chartWidth;
   const squareSize = 10;
 
   return (
@@ -392,7 +383,7 @@ export const BarSquares: React.FC<BarSquaresProps> = ({
 
         const isHovered = activeHoverIndex === idx;
         const isAnyHovered = activeHoverIndex !== null;
-        const opacity = isAnyHovered ? (isHovered ? 1 : 0.35) : 1;
+        const opacity = isAnyHovered ? (isHovered ? 1 : 0.3) : 1;
 
         return (
           <g
@@ -427,9 +418,10 @@ export const BarSquares: React.FC<BarSquaresProps> = ({
                   initial={{ opacity: 0, scale: 0.5 }}
                   animate={{ opacity, scale: 1 }}
                   transition={{
-                    duration: 0.4,
-                    delay: idx * 0.03 + sqIdx * 0.02,
-                    ease: [0.16, 1, 0.3, 1],
+                    type: 'spring',
+                    stiffness: 180,
+                    damping: 18,
+                    delay: idx * 0.025 + sqIdx * 0.02,
                   }}
                 />
               );
@@ -446,15 +438,16 @@ export const BarSquares: React.FC<BarSquaresProps> = ({
 // ============================================================================
 
 export interface BarXAxisProps {
+  step?: number;
   showAllLabels?: boolean;
   maxLabels?: number;
   fontSize?: number;
 }
 
-export const BarXAxis: React.FC<BarXAxisProps> = ({ maxLabels = 14, fontSize = 10 }) => {
+export const BarXAxis: React.FC<BarXAxisProps> = ({ step: customStep, maxLabels = 14, fontSize = 10 }) => {
   const { data, xDataKey, margin, chartWidth, chartHeight } = useBarChart();
-  const groupWidth = chartWidth / data.length;
-  const step = Math.ceil(data.length / maxLabels);
+  const groupWidth = data.length > 0 ? chartWidth / data.length : chartWidth;
+  const step = customStep ?? Math.max(Math.ceil(data.length / maxLabels), 1);
 
   return (
     <g className="bklit-x-axis">
@@ -473,7 +466,7 @@ export const BarXAxis: React.FC<BarXAxisProps> = ({ maxLabels = 14, fontSize = 1
             fill="var(--foreground-muted, #77756D)"
             fontSize={fontSize}
             fontFamily="inherit"
-            fontWeight="500"
+            fontWeight="550"
           >
             {label}
           </text>
@@ -484,7 +477,7 @@ export const BarXAxis: React.FC<BarXAxisProps> = ({ maxLabels = 14, fontSize = 1
 };
 
 // ============================================================================
-// 6. Tooltip Component: <ChartTooltip>
+// 6. Universal Tooltip Component: <ChartTooltip> (Works in BarChart AND LineChart)
 // ============================================================================
 
 export interface ChartTooltipProps {
@@ -492,48 +485,66 @@ export interface ChartTooltipProps {
 }
 
 export const ChartTooltip: React.FC<ChartTooltipProps> = ({ formatter }) => {
-  const { data, xDataKey, activeHoverIndex, series, margin, chartWidth } = useBarChart();
+  const barCtx = useContext(BarChartContext);
+  const lineCtx = useContext(LineChartContext);
+  const ctx = barCtx || lineCtx;
+
+  if (!ctx) return null;
+
+  const { data, xDataKey, activeHoverIndex, series, margin, chartWidth } = ctx;
 
   if (activeHoverIndex === null || !data[activeHoverIndex]) return null;
 
   const current = data[activeHoverIndex];
-  const groupWidth = chartWidth / data.length;
-  const leftPercent = ((margin.left + activeHoverIndex * groupWidth + groupWidth / 2) / (margin.left + chartWidth + margin.right)) * 100;
+  const groupWidth = data.length > 0 ? chartWidth / data.length : chartWidth;
+  const leftPercent =
+    ((margin.left + activeHoverIndex * groupWidth + groupWidth / 2) / (margin.left + chartWidth + margin.right)) * 100;
 
   return (
     <div
       style={{
         position: 'absolute',
-        top: '12px',
+        top: '10px',
         left: `${leftPercent}%`,
         transform: 'translateX(-50%)',
         pointerEvents: 'none',
-        zIndex: 20,
+        zIndex: 25,
       }}
     >
       <AnimatePresence>
         <motion.div
-          initial={{ opacity: 0, y: 6, scale: 0.95 }}
+          initial={{ opacity: 0, y: 8, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.15 }}
+          exit={{ opacity: 0, y: 4, scale: 0.95 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
           style={{
-            background: '#FFFDF8',
-            border: '1px solid #DDD9CC',
-            borderRadius: '10px',
-            padding: '8px 12px',
-            boxShadow: '0 8px 24px rgba(35, 31, 20, 0.12)',
-            minWidth: '110px',
+            background: 'var(--surface, #FFFDF8)',
+            border: '1px solid var(--border, #DDD9CC)',
+            borderRadius: '12px',
+            padding: '10px 14px',
+            boxShadow: '0 8px 30px rgba(35, 31, 20, 0.12)',
+            minWidth: '120px',
             fontSize: '12px',
-            color: '#20201D',
+            color: 'var(--foreground, #20201D)',
           }}
         >
-          <div style={{ fontWeight: '700', marginBottom: '4px', borderBottom: '1px solid #EEEADF', paddingBottom: '4px' }}>
+          <div
+            style={{
+              fontWeight: '750',
+              marginBottom: '6px',
+              borderBottom: '1px solid var(--border-subtle, #EEEADF)',
+              paddingBottom: '4px',
+            }}
+          >
             {String(current[xDataKey])}
           </div>
           {series.map((s) => {
             const val = Number(current[s.dataKey]) || 0;
             const displayVal = formatter ? formatter(val, s.dataKey) : val;
+            const color =
+              s.fill ||
+              ('stroke' in s ? (s as { stroke?: string }).stroke : undefined) ||
+              'var(--primary, #F5AE4D)';
             return (
               <div
                 key={s.dataKey}
@@ -541,15 +552,31 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({ formatter }) => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '12px',
-                  marginTop: '3px',
+                  gap: '14px',
+                  marginTop: '4px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: s.fill }} />
-                  <span style={{ color: '#77756D', textTransform: 'capitalize' }}>{s.dataKey}</span>
+                  <div
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: color,
+                      boxShadow: '0 0 0 2px var(--surface, #FFFDF8)',
+                    }}
+                  />
+                  <span
+                    style={{
+                      color: 'var(--foreground-secondary, #77756D)',
+                      textTransform: 'capitalize',
+                      fontWeight: '500',
+                    }}
+                  >
+                    {s.dataKey}
+                  </span>
                 </div>
-                <span style={{ fontWeight: '700' }}>{displayVal}</span>
+                <span style={{ fontWeight: '750', color: 'var(--foreground, #20201D)' }}>{displayVal}</span>
               </div>
             );
           })}
@@ -577,9 +604,9 @@ export const BarChartLoading: React.FC<{ aspectRatio?: string; className?: strin
         position: 'relative',
         width: '100%',
         aspectRatio,
-        background: '#FAF8F3',
+        background: 'var(--surface-secondary, #FAF8F3)',
         borderRadius: '16px',
-        border: '1px solid #DDD9CC',
+        border: '1px solid var(--border, #DDD9CC)',
         padding: '24px',
         display: 'flex',
         alignItems: 'flex-end',
@@ -594,9 +621,10 @@ export const BarChartLoading: React.FC<{ aspectRatio?: string; className?: strin
           style={{
             flex: 1,
             height: `${heightPercent}%`,
-            background: '#EEEADF',
+            background: 'var(--surface-tertiary, #EEEADF)',
             borderRadius: '6px 6px 0 0',
-            opacity: 0.6,
+            opacity: 0.7,
+            transition: 'height 0.4s ease',
           }}
         />
       ))}

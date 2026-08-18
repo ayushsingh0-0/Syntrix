@@ -4,39 +4,59 @@ export interface SkeletonProps {
   className?: string;
   width?: string;
   height?: string;
-  rounded?: string;
+  borderRadius?: string;
+  style?: React.CSSProperties;
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({
   className = '',
   width,
-  height,
-  rounded = 'rounded-md',
+  height = '16px',
+  borderRadius = '8px',
+  style,
 }) => {
-  const style: React.CSSProperties = {
-    width: width || undefined,
-    height: height || undefined,
-  };
-
   return (
     <div
-      style={style}
-      className={`animate-pulse bg-slate-800/80 ${rounded} ${className}`}
+      className={className}
+      style={{
+        width: width || '100%',
+        height,
+        borderRadius,
+        background: 'var(--surface-secondary, #EEEADF)',
+        opacity: 0.8,
+        animation: 'pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        ...style,
+      }}
     />
   );
 };
 
-export const CardSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => {
+export const CardSkeleton: React.FC<{ style?: React.CSSProperties; className?: string }> = ({
+  style,
+  className = '',
+}) => {
   return (
-    <div className={`bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 ${className}`}>
-      <div className="flex items-center justify-between">
-        <Skeleton width="40%" height="16px" />
-        <Skeleton width="24px" height="24px" rounded="rounded-full" />
+    <div
+      className={`card ${className}`}
+      style={{
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px',
+        background: 'var(--surface, #FFFDF8)',
+        border: '1px solid var(--border, #DDD9CC)',
+        borderRadius: '18px',
+        ...style,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Skeleton width="45%" height="16px" />
+        <Skeleton width="28px" height="28px" borderRadius="50%" />
       </div>
-      <Skeleton width="60%" height="28px" />
-      <div className="space-y-2 pt-2">
+      <Skeleton width="70%" height="28px" borderRadius="10px" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '6px' }}>
         <Skeleton width="100%" height="12px" />
-        <Skeleton width="80%" height="12px" />
+        <Skeleton width="75%" height="12px" />
       </div>
     </div>
   );
@@ -47,19 +67,34 @@ export const TableSkeleton: React.FC<{ rows?: number; cols?: number }> = ({
   cols = 4,
 }) => {
   return (
-    <div className="w-full bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-4 p-4 border-b border-slate-800 bg-slate-950/40">
+    <div
+      className="card"
+      style={{
+        padding: 0,
+        overflow: 'hidden',
+        background: 'var(--surface, #FFFDF8)',
+        border: '1px solid var(--border, #DDD9CC)',
+        borderRadius: '18px',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: '16px',
+          padding: '16px 20px',
+          background: 'var(--surface-secondary, #EEEADF)',
+          borderBottom: '1px solid var(--border, #DDD9CC)',
+        }}
+      >
         {Array.from({ length: cols }).map((_, i) => (
-          <Skeleton key={i} className="flex-1" height="16px" />
+          <Skeleton key={i} style={{ flex: 1 }} height="16px" />
         ))}
       </div>
-      {/* Rows */}
-      <div className="divide-y divide-slate-800/60 p-4 space-y-4">
+      <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {Array.from({ length: rows }).map((_, r) => (
-          <div key={r} className="flex items-center gap-4 py-2">
+          <div key={r} style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '6px 0' }}>
             {Array.from({ length: cols }).map((_, c) => (
-              <Skeleton key={c} className="flex-1" height="14px" />
+              <Skeleton key={c} style={{ flex: 1 }} height="14px" />
             ))}
           </div>
         ))}
@@ -70,13 +105,38 @@ export const TableSkeleton: React.FC<{ rows?: number; cols?: number }> = ({
 
 export const PageLoader: React.FC = () => {
   return (
-    <div className="flex-1 min-h-[60vh] flex flex-col items-center justify-center p-8">
-      <div className="relative flex items-center justify-center">
-        <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-        <div className="absolute w-6 h-6 rounded-full bg-indigo-500/30 blur-sm" />
-      </div>
-      <p className="text-xs font-medium text-slate-400 mt-4 tracking-wider uppercase animate-pulse">
-        Loading view...
+    <div
+      style={{
+        flex: 1,
+        minHeight: '60vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '32px',
+      }}
+    >
+      <div
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          border: '3px solid var(--primary-soft, #FCE5C2)',
+          borderTopColor: 'var(--primary, #F5AE4D)',
+          animation: 'spin 0.8s linear infinite',
+        }}
+      />
+      <p
+        style={{
+          fontSize: '0.8rem',
+          fontWeight: 700,
+          color: 'var(--foreground-muted, #77756D)',
+          marginTop: '16px',
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+        }}
+      >
+        Loading workspace view...
       </p>
     </div>
   );

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -21,62 +22,71 @@ export const Button: React.FC<ButtonProps> = ({
   rightIcon,
   fullWidth = false,
   disabled,
+  style,
   className = '',
   ...props
 }) => {
-  const baseStyles =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer';
-
-  const sizeStyles: Record<ButtonSize, string> = {
-    sm: 'px-3 py-1.5 text-xs gap-1.5',
-    md: 'px-4 py-2 text-sm gap-2',
-    lg: 'px-6 py-2.5 text-base gap-2.5',
+  const sizeStyles: Record<ButtonSize, React.CSSProperties> = {
+    sm: { padding: '6px 12px', fontSize: '0.8rem', gap: '6px', borderRadius: '8px' },
+    md: { padding: '9px 16px', fontSize: '0.875rem', gap: '8px', borderRadius: '10px' },
+    lg: { padding: '12px 22px', fontSize: '0.95rem', gap: '10px', borderRadius: '12px' },
   };
 
-  const variantStyles: Record<ButtonVariant, string> = {
-    primary:
-      'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white shadow-sm hover:shadow focus:ring-indigo-500',
-    secondary:
-      'bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 border border-slate-700 focus:ring-slate-500',
-    danger:
-      'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-sm focus:ring-rose-500',
-    ghost:
-      'bg-transparent hover:bg-slate-800/60 active:bg-slate-800 text-slate-300 hover:text-white focus:ring-slate-600',
-    outline:
-      'bg-transparent hover:bg-indigo-950/40 border border-indigo-500/40 text-indigo-400 hover:text-indigo-300 focus:ring-indigo-500',
+  const variantStyles: Record<ButtonVariant, React.CSSProperties> = {
+    primary: {
+      background: 'var(--primary, #F5AE4D)',
+      color: '#20201D',
+      border: '1px solid transparent',
+      fontWeight: 700,
+      boxShadow: '0 2px 8px rgba(245, 174, 77, 0.25)',
+    },
+    secondary: {
+      background: 'var(--surface, #FFFDF8)',
+      color: 'var(--foreground, #20201D)',
+      border: '1px solid var(--border, #DDD9CC)',
+      fontWeight: 650,
+    },
+    danger: {
+      background: '#9F5141',
+      color: '#FFFDF8',
+      border: '1px solid transparent',
+      fontWeight: 700,
+    },
+    ghost: {
+      background: 'transparent',
+      color: 'var(--foreground-secondary, #77756D)',
+      border: '1px solid transparent',
+      fontWeight: 600,
+    },
+    outline: {
+      background: 'transparent',
+      color: 'var(--primary-hover, #E99532)',
+      border: '1px solid var(--primary, #F5AE4D)',
+      fontWeight: 650,
+    },
   };
-
-  const widthStyle = fullWidth ? 'w-full' : '';
 
   return (
     <button
       disabled={disabled || isLoading}
-      className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${widthStyle} ${className}`}
+      className={`btn-syntrix ${className}`}
+      style={{
+        display: fullWidth ? 'flex' : 'inline-flex',
+        width: fullWidth ? '100%' : 'auto',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: disabled || isLoading ? 'not-allowed' : 'pointer',
+        opacity: disabled || isLoading ? 0.6 : 1,
+        transition: 'all 0.15s ease-out',
+        outline: 'none',
+        textDecoration: 'none',
+        ...sizeStyles[size],
+        ...variantStyles[variant],
+        ...style,
+      }}
       {...props}
     >
-      {isLoading ? (
-        <svg
-          className="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          />
-        </svg>
-      ) : (
-        leftIcon
-      )}
+      {isLoading ? <Loader2 size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} /> : leftIcon}
       <span>{children}</span>
       {!isLoading && rightIcon}
     </button>

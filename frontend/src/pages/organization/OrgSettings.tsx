@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Trash2, ArrowRightLeft, ShieldAlert } from 'lucide-react';
+import { Save, Trash2, ArrowRightLeft, ShieldAlert, Settings } from 'lucide-react';
 import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
 import { getErrorMessage } from '../../utils/error';
@@ -22,13 +22,16 @@ export const OrgSettings: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     if (currentOrg) {
-      api.get(`/organizations/${currentOrg.id}/members`).then((res) => {
-        if (isMounted) {
-          setMembers(res.data.data || []);
-        }
-      }).catch(() => {
-        // ignore
-      });
+      api
+        .get(`/organizations/${currentOrg.id}/members`)
+        .then((res) => {
+          if (isMounted) {
+            setMembers(res.data.data || []);
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
     }
     return () => {
       isMounted = false;
@@ -94,19 +97,27 @@ export const OrgSettings: React.FC = () => {
   if (!currentOrg) return null;
 
   return (
-    <div style={{ maxWidth: '840px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.8rem', marginBottom: '6px' }}>Organization Settings</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+    <div style={{ maxWidth: '840px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
+      {/* Header */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <Settings size={20} color="var(--primary, #F5AE4D)" />
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--foreground)' }}>
+            Organization Settings
+          </h1>
+        </div>
+        <p style={{ color: 'var(--foreground-secondary)', fontSize: '0.875rem' }}>
           Manage workspace branding, identifiers, ownership, and destruction controls
         </p>
       </div>
 
       {/* General Settings */}
-      <div className="card" style={{ marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem' }}>Workspace Details</h3>
+      <div className="card" style={{ padding: '1.75rem' }}>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: 750, color: 'var(--foreground)', marginBottom: '1.25rem' }}>
+          Workspace Details
+        </h3>
 
-        <form onSubmit={handleUpdate}>
+        <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="input-group">
             <label className="input-label">Workspace Name</label>
             <input
@@ -143,8 +154,13 @@ export const OrgSettings: React.FC = () => {
           </div>
 
           {hasPermission('ORG_UPDATE') && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-              <button type="submit" className="btn btn-primary" disabled={isUpdating}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isUpdating}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '10px', fontWeight: 700 }}
+              >
                 <Save size={16} />
                 <span>{isUpdating ? 'Saving...' : 'Save Settings'}</span>
               </button>
@@ -155,9 +171,11 @@ export const OrgSettings: React.FC = () => {
 
       {/* Transfer Ownership (OWNER only) */}
       {myRole === 'OWNER' && (
-        <div className="card" style={{ marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Transfer Ownership</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+        <div className="card" style={{ padding: '1.75rem' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 750, color: 'var(--foreground)', marginBottom: '6px' }}>
+            Transfer Ownership
+          </h3>
+          <p style={{ color: 'var(--foreground-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
             Transfer primary ownership of this organization to another active member. You will automatically retain ADMIN privileges.
           </p>
 
@@ -181,11 +199,12 @@ export const OrgSettings: React.FC = () => {
               </select>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
               <button
                 type="submit"
                 className="btn btn-secondary"
                 disabled={isTransferring || !newOwnerUserId}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 18px', borderRadius: '10px', fontWeight: 650 }}
               >
                 <ArrowRightLeft size={16} />
                 <span>{isTransferring ? 'Transferring...' : 'Transfer Ownership'}</span>
@@ -200,20 +219,50 @@ export const OrgSettings: React.FC = () => {
         <div
           className="card"
           style={{
-            borderColor: 'rgba(244, 63, 94, 0.3)',
-            background: 'rgba(244, 63, 94, 0.04)',
+            padding: '1.75rem',
+            borderColor: 'rgba(201, 109, 87, 0.35)',
+            background: 'var(--surface)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-            <ShieldAlert size={20} color="var(--rose)" />
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--rose)' }}>Danger Zone</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: '#F5E1DB',
+                color: '#9F5141',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ShieldAlert size={20} />
+            </div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 750, color: '#9F5141' }}>Danger Zone</h3>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+          <p style={{ color: 'var(--foreground-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
             Permanently delete this organization, including all associated teams, projects, task boards, and member records. This action cannot be undone.
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button className="btn btn-danger" onClick={handleDeleteOrg}>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleDeleteOrg}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '10px 18px',
+                borderRadius: '10px',
+                fontWeight: 700,
+                background: '#9F5141',
+                color: '#FFFDF8',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
               <Trash2 size={16} />
               <span>Delete Organization</span>
             </button>
@@ -223,3 +272,5 @@ export const OrgSettings: React.FC = () => {
     </div>
   );
 };
+
+export default OrgSettings;

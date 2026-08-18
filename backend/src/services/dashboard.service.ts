@@ -13,8 +13,8 @@ export class DashboardService {
   /**
    * Fetch complete organization dashboard analytics payload (Cache-Aside: 60s TTL)
    */
-  async getOrganizationDashboard(orgId: string) {
-    const cacheKey = CacheKeys.orgDashboard(orgId);
+  async getOrganizationDashboard(orgId: string, days = 14) {
+    const cacheKey = `${CacheKeys.orgDashboard(orgId)}:days=${days}`;
 
     const { data, isHit } = await cacheService.getOrSet(
       cacheKey,
@@ -25,7 +25,7 @@ export class DashboardService {
         const [summary, workload, velocity, activities] = await Promise.all([
           this.dashboardRepo.getOrganizationSummary(orgId),
           this.dashboardRepo.getMemberWorkload(orgId),
-          this.dashboardRepo.getCompletionVelocity(orgId, 14),
+          this.dashboardRepo.getCompletionVelocity(orgId, days),
           this.dashboardRepo.getRecentActivities(orgId, 10),
         ]);
 

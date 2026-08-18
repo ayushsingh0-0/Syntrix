@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserPlus, Mail, RotateCw, Trash2, Copy, Check, Clock, Plus, X } from 'lucide-react';
 import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
@@ -18,7 +18,7 @@ export const OrgInvitations: React.FC = () => {
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [hasCopied, setHasCopied] = useState(false);
 
-  const fetchInvites = useCallback(async () => {
+  const fetchInvites = async () => {
     if (!currentOrg) return;
     try {
       const { data } = await api.get(`/organizations/${currentOrg.id}/invitations`);
@@ -28,26 +28,28 @@ export const OrgInvitations: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentOrg]);
+  };
 
   useEffect(() => {
     let isMounted = true;
     if (!currentOrg) return;
 
-    api.get(`/organizations/${currentOrg.id}/invitations`).then((res) => {
-      if (isMounted) {
-        setInvites(res.data.data || []);
-        setIsLoading(false);
-      }
-    }).catch(() => {
-      if (isMounted) setIsLoading(false);
-    });
+    api
+      .get(`/organizations/${currentOrg.id}/invitations`)
+      .then((res) => {
+        if (isMounted) {
+          setInvites(res.data.data || []);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setIsLoading(false);
+      });
 
     return () => {
       isMounted = false;
     };
   }, [currentOrg]);
-
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,78 +107,132 @@ export const OrgInvitations: React.FC = () => {
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
+      {/* Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
         <div>
-          <h1 style={{ fontSize: '1.8rem', marginBottom: '6px' }}>Workspace Invitations</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Manage pending team invites and send collaboration links
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <Mail size={20} color="var(--primary, #F5AE4D)" />
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--foreground)' }}>
+              Workspace Invitations
+            </h1>
+          </div>
+          <p style={{ color: 'var(--foreground-secondary)', fontSize: '0.875rem' }}>
+            Manage pending collaborator invites and share join links for {currentOrg?.name}
           </p>
         </div>
 
         {hasPermission('MEMBER_INVITE') && (
-          <button className="btn btn-primary" onClick={() => { setIsInviteModalOpen(true); setGeneratedLink(null); }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setIsInviteModalOpen(true);
+              setGeneratedLink(null);
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '10px 18px',
+              borderRadius: '12px',
+              fontWeight: 700,
+            }}
+          >
             <Plus size={16} />
             <span>Invite Collaborator</span>
           </button>
         )}
       </div>
 
+      {/* Invitations Table Card */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-default)' }}>
-              <th style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Invited Email</th>
-              <th style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Assigned Role</th>
-              <th style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Expires</th>
-              <th style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+            <tr style={{ background: 'var(--surface-secondary)', borderBottom: '1px solid var(--border)' }}>
+              <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--foreground-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Invited Email
+              </th>
+              <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--foreground-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Assigned Role
+              </th>
+              <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--foreground-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Expires
+              </th>
+              <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--foreground-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right' }}>
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={4} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                <td colSpan={4} style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--foreground-muted)', fontSize: '0.875rem' }}>
                   Loading invitations...
                 </td>
               </tr>
             ) : invites.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  No pending invitations found.
+                <td colSpan={4} style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--foreground-muted)', fontSize: '0.875rem' }}>
+                  No pending invitations found. Send your first invite above.
                 </td>
               </tr>
             ) : (
               invites.map((inv) => (
-                <tr key={inv.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <td style={{ padding: '16px 20px', fontWeight: '600', fontSize: '0.9rem' }}>
+                <tr
+                  key={inv.id}
+                  style={{
+                    borderBottom: '1px solid var(--border-subtle)',
+                    transition: 'background 0.15s ease',
+                    height: '56px',
+                  }}
+                >
+                  <td style={{ padding: '14px 20px', fontWeight: 650, fontSize: '0.9rem', color: 'var(--foreground)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Mail size={16} color="var(--primary)" />
+                      <Mail size={16} color="var(--primary-hover)" />
                       <span>{inv.email}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '16px 20px' }}>
+                  <td style={{ padding: '14px 20px' }}>
                     <span className="badge badge-primary">{inv.role}</span>
                   </td>
-                  <td style={{ padding: '16px 20px', fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+                  <td style={{ padding: '14px 20px', fontSize: '0.825rem', color: 'var(--foreground-muted)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Clock size={14} />
                       <span>{new Date(inv.expiresAt).toLocaleDateString()}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                       <button
+                        type="button"
                         className="btn btn-secondary btn-sm"
                         onClick={() => handleResend(inv.id, inv.email)}
                         title="Extend 7-day expiration & refresh link"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                        }}
                       >
-                        <RotateCw size={14} />
-                        <span>Refresh Link</span>
+                        <RotateCw size={13} />
+                        <span>Refresh</span>
                       </button>
                       <button
+                        type="button"
                         className="btn btn-ghost btn-sm"
                         onClick={() => handleRevoke(inv.id, inv.email)}
-                        style={{ color: 'var(--rose)' }}
+                        style={{ color: '#9F5141', padding: '6px 10px', borderRadius: '8px' }}
                         title="Revoke invitation"
                       >
                         <Trash2 size={14} />
@@ -193,33 +249,34 @@ export const OrgInvitations: React.FC = () => {
       {/* Invite Modal */}
       {isInviteModalOpen && (
         <div className="modal-overlay" onClick={() => setIsInviteModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div
                   style={{
-                    width: '36px',
-                    height: '36px',
+                    width: '38px',
+                    height: '38px',
                     borderRadius: 'var(--radius-md)',
-                    background: 'var(--primary-light)',
+                    background: 'var(--primary-soft)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--primary)',
+                    color: '#20201D',
                   }}
                 >
                   <UserPlus size={20} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem' }}>Invite Collaborator</h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 750, color: 'var(--foreground)' }}>Invite Collaborator</h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)' }}>
                     Send an invite link to join {currentOrg?.name}
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsInviteModalOpen(false)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--foreground-muted)', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>
@@ -227,9 +284,25 @@ export const OrgInvitations: React.FC = () => {
 
             {generatedLink ? (
               <div style={{ textAlign: 'center', padding: '10px 0' }}>
-                <Check size={36} color="var(--emerald)" style={{ margin: '0 auto 8px auto' }} />
-                <h4 style={{ fontSize: '1.1rem', marginBottom: '6px' }}>Invitation Ready!</h4>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                <div
+                  style={{
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '14px',
+                    background: '#E4EEE5',
+                    color: '#52755A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 12px',
+                  }}
+                >
+                  <Check size={28} />
+                </div>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 750, marginBottom: '6px', color: 'var(--foreground)' }}>
+                  Invitation Ready!
+                </h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--foreground-secondary)', marginBottom: '16px' }}>
                   Share this private 7-day token link with <strong>{inviteEmail}</strong>:
                 </p>
 
@@ -238,8 +311,8 @@ export const OrgInvitations: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-default)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
                     borderRadius: 'var(--radius-md)',
                     padding: '8px 12px',
                     marginBottom: '20px',
@@ -253,21 +326,27 @@ export const OrgInvitations: React.FC = () => {
                       flex: 1,
                       background: 'transparent',
                       border: 'none',
-                      color: 'var(--text-primary)',
+                      color: 'var(--foreground)',
                       fontSize: '0.85rem',
                       fontFamily: 'var(--font-mono)',
                       outline: 'none',
                     }}
                   />
-                  <button className="btn btn-primary btn-sm" onClick={() => copyLink(generatedLink)}>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => copyLink(generatedLink)}
+                    style={{ padding: '6px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
                     {hasCopied ? <Check size={14} /> : <Copy size={14} />}
                     <span>{hasCopied ? 'Copied' : 'Copy'}</span>
                   </button>
                 </div>
 
                 <button
+                  type="button"
                   className="btn btn-secondary"
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 650 }}
                   onClick={() => {
                     setIsInviteModalOpen(false);
                     setGeneratedLink(null);
@@ -292,7 +371,7 @@ export const OrgInvitations: React.FC = () => {
                   />
                 </div>
 
-                <div className="input-group">
+                <div className="input-group" style={{ marginTop: '14px' }}>
                   <label className="input-label">Workspace Role</label>
                   <select
                     className="input-field"
@@ -322,3 +401,5 @@ export const OrgInvitations: React.FC = () => {
     </div>
   );
 };
+
+export default OrgInvitations;

@@ -11,7 +11,9 @@ export class DashboardController {
    */
   getOrgDashboard = async (req: Request, res: Response): Promise<void> => {
     const orgId = getParam(req.params.id || req.params.orgId);
-    const data = await dashboardService.getOrganizationDashboard(orgId);
+    const daysQuery = req.query.days ? parseInt(req.query.days as string, 10) : 14;
+    const days = isNaN(daysQuery) ? 14 : Math.min(Math.max(daysQuery, 3), 180);
+    const data = await dashboardService.getOrganizationDashboard(orgId, days);
 
     res.status(200).json({
       status: 'success',

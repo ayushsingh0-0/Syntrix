@@ -10,41 +10,60 @@ import {
   Activity,
   Flame,
   UserPlus,
+  ChevronDown,
 } from 'lucide-react';
 import { useOrg } from '../../context';
 import api from '../../services/api';
 import type { OrgDashboardData, Project } from '../../types';
-import { BarChart, Bar, BarXAxis, Grid, ChartTooltip, BarChartLoading } from '../../components/charts';
+import {
+  BarChart,
+  Bar,
+  BarXAxis,
+  Grid,
+  ChartTooltip,
+  BarChartLoading,
+  LineChart,
+  Line,
+  LineXAxis,
+  LineChartTooltip,
+} from '../../components/charts';
 
 export const OrgOverview: React.FC = () => {
   const { currentOrg, myRole } = useOrg();
   const [dashboardData, setDashboardData] = useState<OrgDashboardData | null>(null);
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [timeSpan, setTimeSpan] = useState<number>(14);
+  const [isVelocityLoading, setIsVelocityLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     if (!currentOrg) return;
 
     Promise.all([
-      api.get(`/organizations/${currentOrg.id}/dashboard`),
-      api.get(`/organizations/${currentOrg.id}/projects?limit=5`),
+      api.get(`/organizations/${currentOrg.id}/dashboard?days=${timeSpan}`),
+      api.get(`/organizations/${currentOrg.id}/projects?limit=6`),
     ])
       .then(([dashRes, projRes]) => {
         if (isMounted) {
           setDashboardData(dashRes.data.data);
           setRecentProjects(projRes.data.data || []);
           setIsLoading(false);
+          setIsVelocityLoading(false);
         }
       })
-      .catch(() => {
-        if (isMounted) setIsLoading(false);
+      .catch((err) => {
+        console.error('Failed to load dashboard data:', err);
+        if (isMounted) {
+          setIsLoading(false);
+          setIsVelocityLoading(false);
+        }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [currentOrg]);
+  }, [currentOrg, timeSpan]);
 
   if (!currentOrg || isLoading) {
     return (
@@ -205,55 +224,128 @@ export const OrgOverview: React.FC = () => {
 
       {/* Main Grid: Bklit UI Bar Chart & Breakdown */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '20px' }}>
-        {/* 14-Day Delivery Velocity Bar Chart */}
+        {/* Delivery Velocity Bar Chart Card */}
         <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <h3 style={{ fontSize: '1.05rem', fontWeight: '750', color: 'var(--foreground)' }}>
-                14-Day Delivery Velocity
+                Delivery Velocity
               </h3>
               <p style={{ fontSize: '0.775rem', color: 'var(--foreground-muted)', marginTop: '2px' }}>
                 Daily tasks completed vs. tasks created
               </p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#F5AE4D' }} />
-                <span style={{ color: 'var(--foreground-secondary)', fontWeight: '600' }}>Completed</span>
+
+            {/* Time Span Dropdown & Legend */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              {/* Custom styled select dropdown */}
+              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                <select
+                  value={timeSpan}
+                  onChange={(e) => setTimeSpan(Number(e.target.value))}
+                  style={{
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm, 8px)',
+                    padding: '5px 28px 5px 12px',
+                    fontSize: '0.775rem',
+                    fontWeight: '650',
+                    color: 'var(--foreground)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxShadow: 'var(--shadow-sm)',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
+                >
+                  <option value={7}>Last 7 Days</option>
+                  <option value={14}>Last 14 Days</option>
+                  <option value={30}>Last 30 Days (1 Mo)</option>
+                  <option value={90}>Last 90 Days (3 Mo)</option>
+                </select>
+                <ChevronDown
+                  size={14}
+                  color="var(--foreground-secondary)"
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    pointerEvents: 'none',
+                  }}
+                />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#20201D' }} />
-                <span style={{ color: 'var(--foreground-secondary)', fontWeight: '600' }}>Created</span>
+
+              {/* Chart Series Legend */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <div style={{ width: '9px', height: '9px', borderRadius: '2.5px', background: '#F5AE4D' }} />
+                  <span style={{ color: 'var(--foreground-secondary)', fontWeight: '600' }}>Completed</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <div style={{ width: '9px', height: '9px', borderRadius: '2.5px', background: '#20201D' }} />
+                  <span style={{ color: 'var(--foreground-secondary)', fontWeight: '600' }}>Created</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Bklit UI Bar Chart Component */}
-          <div style={{ flex: 1, minHeight: '220px', width: '100%' }}>
-            <BarChart
-              data={velocity}
-              xDataKey="label"
-              aspectRatio="2.3 / 1"
-              margin={{ top: 16, right: 12, bottom: 28, left: 16 }}
-            >
-              <Grid horizontal stroke="var(--border)" />
-              <Bar
-                dataKey="completed"
-                fill="#F5AE4D"
-                lineCap="round"
-                animationType="grow"
-              />
-              <Bar
-                dataKey="created"
-                fill="#20201D"
-                lineCap="round"
-                animationType="grow"
-              />
-              <BarXAxis maxLabels={14} fontSize={10} />
-              <ChartTooltip
-                formatter={(val) => `${val} task${val === 1 ? '' : 's'}`}
-              />
-            </BarChart>
+          {/* Dynamic Visual Chart (BarChart for <= 14 days, LineChart for 30d/90d) */}
+          <div style={{ flex: 1, minHeight: '220px', width: '100%', opacity: isVelocityLoading ? 0.6 : 1, transition: 'opacity 0.2s ease' }}>
+            {timeSpan <= 14 ? (
+              <BarChart
+                data={velocity}
+                xDataKey="label"
+                aspectRatio="2.3 / 1"
+                margin={{ top: 16, right: 12, bottom: 28, left: 16 }}
+              >
+                <Grid horizontal stroke="var(--border)" />
+                <Bar
+                  dataKey="completed"
+                  fill="#F5AE4D"
+                  lineCap="round"
+                  animationType="grow"
+                />
+                <Bar
+                  dataKey="created"
+                  fill="#20201D"
+                  lineCap="round"
+                  animationType="grow"
+                />
+                <BarXAxis step={timeSpan === 14 ? 2 : 1} fontSize={10} />
+                <ChartTooltip
+                  formatter={(val) => `${val} task${val === 1 ? '' : 's'}`}
+                />
+              </BarChart>
+            ) : (
+              <LineChart
+                data={velocity}
+                xDataKey="label"
+                aspectRatio="2.3 / 1"
+                margin={{ top: 16, right: 12, bottom: 28, left: 16 }}
+              >
+                <Grid horizontal stroke="var(--border)" />
+                <Line
+                  dataKey="completed"
+                  stroke="#F5AE4D"
+                  strokeWidth={2.5}
+                  fill="rgba(245, 174, 77, 0.10)"
+                  curve="monotone"
+                />
+                <Line
+                  dataKey="created"
+                  stroke="#20201D"
+                  strokeWidth={2}
+                  fill="rgba(32, 32, 29, 0.04)"
+                  curve="monotone"
+                />
+                <LineXAxis step={timeSpan === 30 ? 4 : 10} fontSize={10} />
+                <LineChartTooltip
+                  formatter={(val) => `${val} task${val === 1 ? '' : 's'}`}
+                />
+              </LineChart>
+            )}
           </div>
         </div>
 

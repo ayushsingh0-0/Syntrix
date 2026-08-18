@@ -4,7 +4,6 @@ import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { CreateOrgModal } from '../modals/CreateOrgModal';
 import { useAuth, useOrg } from '../../context';
-
 import { Building2, Plus } from 'lucide-react';
 
 export const DashboardLayout: React.FC = () => {
@@ -12,6 +11,7 @@ export const DashboardLayout: React.FC = () => {
   const { orgs, isLoading: orgLoading } = useOrg();
 
   const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (authLoading) {
     return (
@@ -21,8 +21,9 @@ export const DashboardLayout: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'var(--text-secondary)',
+          color: 'var(--foreground-secondary, #77756D)',
           fontSize: '0.95rem',
+          background: 'var(--background, #F5F3EB)',
         }}
       >
         Loading Syntrix Platform...
@@ -35,21 +36,29 @@ export const DashboardLayout: React.FC = () => {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-app)' }}>
-      <Sidebar onOpenCreateOrgModal={() => setCreateOrgModalOpen(true)} />
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--background, #F5F3EB)' }}>
+      {/* Sidebar (Desktop fixed, Mobile responsive drawer) */}
+      <Sidebar
+        isOpenMobile={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+        onOpenCreateOrgModal={() => {
+          setMobileMenuOpen(false);
+          setCreateOrgModalOpen(true);
+        }}
+      />
 
       <div
+        className="main-content-wrapper"
         style={{
-          marginLeft: 'var(--sidebar-width)',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
         }}
       >
-        <Navbar />
+        <Navbar onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)} />
 
-        <main style={{ flex: 1, padding: '28px', maxWidth: '1400px', width: '100%', margin: '0 auto' }}>
+        <main style={{ flex: 1, padding: '24px', maxWidth: '1400px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
           {!orgLoading && orgs.length === 0 ? (
             <div
               className="card"
@@ -58,15 +67,18 @@ export const DashboardLayout: React.FC = () => {
                 padding: '60px 24px',
                 maxWidth: '560px',
                 margin: '40px auto',
+                background: 'var(--surface, #FFFDF8)',
+                border: '1px solid var(--border, #DDD9CC)',
+                borderRadius: '20px',
               }}
             >
               <div
                 style={{
                   width: '64px',
                   height: '64px',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--primary-light)',
-                  color: 'var(--primary)',
+                  borderRadius: '18px',
+                  background: 'var(--primary-soft, #FCE5C2)',
+                  color: '#20201D',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -75,13 +87,17 @@ export const DashboardLayout: React.FC = () => {
               >
                 <Building2 size={32} />
               </div>
-              <h2 style={{ fontSize: '1.4rem', marginBottom: '8px' }}>No Workspace Found</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--foreground, #20201D)', marginBottom: '8px' }}>
+                No Workspace Found
+              </h2>
+              <p style={{ color: 'var(--foreground-secondary, #77756D)', fontSize: '0.9rem', marginBottom: '24px', lineHeight: 1.5 }}>
                 You are not currently enrolled in any organization. Create your first workspace to manage projects, invite collaborators, and build teams.
               </p>
               <button
+                type="button"
                 className="btn btn-primary"
                 onClick={() => setCreateOrgModalOpen(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', fontWeight: 700 }}
               >
                 <Plus size={18} />
                 <span>Create Workspace</span>
@@ -100,3 +116,5 @@ export const DashboardLayout: React.FC = () => {
     </div>
   );
 };
+
+export default DashboardLayout;

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -37,50 +38,116 @@ export const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen) return null;
 
-  const maxWidthClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    '2xl': 'max-w-2xl',
+  const maxWidthValues = {
+    sm: '420px',
+    md: '520px',
+    lg: '640px',
+    xl: '760px',
+    '2xl': '900px',
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+      }}
+    >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity animate-fade-in"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(32, 32, 29, 0.45)',
+          backdropFilter: 'blur(4px)',
+          transition: 'opacity 0.2s ease',
+        }}
         onClick={onClose}
       />
 
       {/* Modal Container */}
       <div
-        className={`relative w-full ${maxWidthClasses[maxWidth]} bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden z-10 animate-scale-up`}
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: maxWidthValues[maxWidth],
+          background: 'var(--surface, #FFFDF8)',
+          border: '1px solid var(--border, #DDD9CC)',
+          borderRadius: '20px',
+          boxShadow: '0 20px 60px rgba(35, 31, 20, 0.12)',
+          overflow: 'hidden',
+          zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: 'calc(100vh - 32px)',
+        }}
       >
         {/* Header */}
         {(title || subtitle) && (
-          <div className="flex items-start justify-between p-5 border-b border-slate-800/80 bg-slate-900/50">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              padding: '20px 24px',
+              borderBottom: '1px solid var(--border-subtle, #EEEADF)',
+              background: 'var(--surface, #FFFDF8)',
+            }}
+          >
             <div>
-              {title && <h3 className="text-lg font-semibold text-slate-100">{title}</h3>}
-              {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+              {title && (
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 750, color: 'var(--foreground, #20201D)', margin: 0 }}>
+                  {title}
+                </h3>
+              )}
+              {subtitle && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted, #77756D)', margin: '4px 0 0 0' }}>
+                  {subtitle}
+                </p>
+              )}
             </div>
             <button
+              type="button"
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-800"
+              aria-label="Close modal"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--foreground-muted, #77756D)',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X size={18} />
             </button>
           </div>
         )}
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto max-h-[calc(100vh-16rem)]">{children}</div>
+        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 p-4 bg-slate-950/40 border-t border-slate-800/80">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              padding: '16px 24px',
+              background: 'var(--surface-secondary, #EEEADF)',
+              borderTop: '1px solid var(--border-subtle, #EEEADF)',
+            }}
+          >
             {footer}
           </div>
         )}

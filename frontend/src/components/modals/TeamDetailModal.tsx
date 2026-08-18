@@ -132,11 +132,11 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ teamId, isOpen
                 width: '38px',
                 height: '38px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(139, 92, 246, 0.15)',
+                background: 'var(--primary-soft)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--accent)',
+                color: '#20201D',
               }}
             >
               <Layers size={22} />

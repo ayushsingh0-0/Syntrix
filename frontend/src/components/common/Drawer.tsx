@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
 
 export interface DrawerProps {
   isOpen: boolean;
@@ -39,53 +40,110 @@ export const Drawer: React.FC<DrawerProps> = ({
 
   if (!isOpen) return null;
 
-  const sizeClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    '2xl': 'max-w-2xl',
-  };
-
-  const positionClasses = {
-    left: 'left-0 justify-start',
-    right: 'right-0 justify-end',
+  const sizeWidths = {
+    sm: '380px',
+    md: '460px',
+    lg: '560px',
+    xl: '680px',
+    '2xl': '800px',
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div style={{ position: 'fixed', inset: 0, zIndex: 999, overflow: 'hidden' }}>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity animate-fade-in"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(32, 32, 29, 0.45)',
+          backdropFilter: 'blur(4px)',
+          transition: 'opacity 0.2s ease',
+        }}
         onClick={onClose}
       />
 
-      <div className={`fixed inset-y-0 ${positionClasses[position]} flex max-w-full`}>
+      <div
+        style={{
+          position: 'fixed',
+          insetBlock: 0,
+          [position]: 0,
+          display: 'flex',
+          maxWidth: '100%',
+          zIndex: 10,
+        }}
+      >
         <div
-          className={`w-screen ${sizeClasses[size]} bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col z-10 animate-slide-in-right`}
+          style={{
+            width: sizeWidths[size],
+            maxWidth: '100vw',
+            background: 'var(--surface, #FFFDF8)',
+            borderLeft: position === 'right' ? '1px solid var(--border, #DDD9CC)' : 'none',
+            borderRight: position === 'left' ? '1px solid var(--border, #DDD9CC)' : 'none',
+            boxShadow: '0 20px 60px rgba(35, 31, 20, 0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+          }}
         >
           {/* Header */}
-          <div className="flex items-start justify-between p-5 border-b border-slate-800 bg-slate-900/80">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              padding: '20px 24px',
+              borderBottom: '1px solid var(--border-subtle, #EEEADF)',
+              background: 'var(--surface, #FFFDF8)',
+            }}
+          >
             <div>
-              {title && <h3 className="text-lg font-semibold text-slate-100">{title}</h3>}
-              {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+              {title && (
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 750, color: 'var(--foreground, #20201D)', margin: 0 }}>
+                  {title}
+                </h3>
+              )}
+              {subtitle && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted, #77756D)', margin: '4px 0 0 0' }}>
+                  {subtitle}
+                </p>
+              )}
             </div>
             <button
+              type="button"
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-800"
+              aria-label="Close drawer"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--foreground-muted, #77756D)',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X size={18} />
             </button>
           </div>
 
           {/* Body */}
-          <div className="flex-1 p-6 overflow-y-auto">{children}</div>
+          <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>{children}</div>
 
           {/* Footer */}
           {footer && (
-            <div className="flex items-center justify-end gap-3 p-4 bg-slate-950/40 border-t border-slate-800">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: '12px',
+                padding: '16px 24px',
+                background: 'var(--surface-secondary, #EEEADF)',
+                borderTop: '1px solid var(--border-subtle, #EEEADF)',
+              }}
+            >
               {footer}
             </div>
           )}

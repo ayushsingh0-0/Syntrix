@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from './Button';
+import { Inbox } from 'lucide-react';
 
 export interface EmptyStateProps {
   icon?: React.ReactNode;
@@ -11,6 +12,7 @@ export interface EmptyStateProps {
   secondaryActionText?: string;
   onSecondaryAction?: () => void;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
@@ -23,22 +25,55 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   secondaryActionText,
   onSecondaryAction,
   className = '',
+  style,
 }) => {
   return (
     <div
-      className={`flex flex-col items-center justify-center p-8 text-center bg-slate-900/50 border border-slate-800/80 rounded-2xl ${className}`}
+      className={`card ${className}`}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '48px 24px',
+        textAlign: 'center',
+        background: 'var(--surface, #FFFDF8)',
+        border: '1px solid var(--border, #DDD9CC)',
+        borderRadius: '20px',
+        ...style,
+      }}
     >
-      <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-400 mb-4 ring-1 ring-indigo-500/20">
-        {icon || (
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-          </svg>
-        )}
+      <div
+        style={{
+          width: '56px',
+          height: '56px',
+          borderRadius: '16px',
+          background: 'var(--primary-soft, #FCE5C2)',
+          color: '#20201D',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '16px',
+        }}
+      >
+        {icon || <Inbox size={28} />}
       </div>
-      <h3 className="text-base font-semibold text-slate-100">{title}</h3>
-      <p className="text-sm text-slate-400 max-w-sm mt-1.5 leading-relaxed">{description}</p>
+      <h3 style={{ fontSize: '1.2rem', fontWeight: 750, color: 'var(--foreground, #20201D)', margin: '0 0 6px 0' }}>
+        {title}
+      </h3>
+      <p
+        style={{
+          fontSize: '0.875rem',
+          color: 'var(--foreground-secondary, #77756D)',
+          maxWidth: '380px',
+          lineHeight: 1.5,
+          margin: '0 0 20px 0',
+        }}
+      >
+        {description}
+      </p>
       {(actionText || secondaryActionText) && (
-        <div className="flex items-center gap-3 mt-6">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {secondaryActionText && (
             <Button variant="secondary" size="sm" onClick={onSecondaryAction}>
               {secondaryActionText}

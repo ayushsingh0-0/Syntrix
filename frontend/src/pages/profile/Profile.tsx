@@ -81,11 +81,17 @@ export const Profile: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: '840px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.8rem', marginBottom: '6px' }}>Account Settings</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Manage your personal profile, contact information, and security preferences
+    <div style={{ maxWidth: '840px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
+      {/* Header */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <UserIcon size={20} color="var(--primary, #F5AE4D)" />
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--foreground)' }}>
+            Account Settings
+          </h1>
+        </div>
+        <p style={{ color: 'var(--foreground-secondary)', fontSize: '0.875rem' }}>
+          Manage your personal profile, contact information, and security credentials
         </p>
       </div>
 
@@ -96,27 +102,30 @@ export const Profile: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '14px 18px',
-            borderRadius: 'var(--radius-lg)',
-            background: 'rgba(245, 158, 11, 0.12)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            marginBottom: '24px',
+            borderRadius: 'var(--radius-md, 12px)',
+            background: '#F8EBD3',
+            border: '1px solid #E0A34C',
+            gap: '14px',
+            flexWrap: 'wrap',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <AlertTriangle size={20} color="var(--amber)" />
+            <AlertTriangle size={20} color="#986A25" />
             <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--amber)' }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: '750', color: '#986A25' }}>
                 Email Verification Pending
               </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--foreground-secondary)' }}>
                 Please verify your email address to ensure full account access and recovery capabilities.
               </div>
             </div>
           </div>
           <button
+            type="button"
             className="btn btn-secondary btn-sm"
             onClick={handleResendVerification}
             disabled={isResendingEmail}
+            style={{ padding: '6px 14px', borderRadius: '8px', fontWeight: 650 }}
           >
             {isResendingEmail ? 'Sending...' : 'Resend Email'}
           </button>
@@ -124,11 +133,13 @@ export const Profile: React.FC = () => {
       )}
 
       {/* Profile Form */}
-      <div className="card" style={{ marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem' }}>Personal Information</h3>
+      <div className="card" style={{ padding: '1.75rem' }}>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: 750, color: 'var(--foreground)', marginBottom: '1.25rem' }}>
+          Personal Information
+        </h3>
 
-        <form onSubmit={handleUpdateProfile}>
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '8px' }}>
             {avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -136,7 +147,7 @@ export const Profile: React.FC = () => {
                 style={{
                   width: '72px',
                   height: '72px',
-                  borderRadius: 'var(--radius-full)',
+                  borderRadius: '50%',
                   objectFit: 'cover',
                   border: '3px solid var(--primary)',
                 }}
@@ -146,16 +157,18 @@ export const Profile: React.FC = () => {
                 style={{
                   width: '72px',
                   height: '72px',
-                  borderRadius: 'var(--radius-full)',
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border-default)',
+                  borderRadius: '50%',
+                  background: 'var(--primary-soft)',
+                  border: '1px solid var(--border)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--text-secondary)',
+                  color: '#20201D',
+                  fontWeight: 750,
+                  fontSize: '1.5rem',
                 }}
               >
-                <UserIcon size={32} />
+                {name.charAt(0) || <UserIcon size={32} />}
               </div>
             )}
             <div style={{ flex: 1 }}>
@@ -170,7 +183,7 @@ export const Profile: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
             <div className="input-group">
               <label className="input-label">Full Name</label>
               <div style={{ position: 'relative' }}>
@@ -182,7 +195,7 @@ export const Profile: React.FC = () => {
                   required
                   style={{ paddingLeft: '38px' }}
                 />
-                <UserIcon size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <UserIcon size={16} color="var(--foreground-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               </div>
             </div>
 
@@ -197,7 +210,7 @@ export const Profile: React.FC = () => {
                   onChange={(e) => setPhone(e.target.value)}
                   style={{ paddingLeft: '38px' }}
                 />
-                <Phone size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Phone size={16} color="var(--foreground-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               </div>
             </div>
           </div>
@@ -212,7 +225,7 @@ export const Profile: React.FC = () => {
                 disabled
                 style={{ paddingLeft: '38px', opacity: 0.7 }}
               />
-              <Mail size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Mail size={16} color="var(--foreground-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             </div>
           </div>
 
@@ -228,20 +241,27 @@ export const Profile: React.FC = () => {
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-            <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={isUpdatingProfile}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '10px', fontWeight: 700 }}
+            >
               <Save size={16} />
-              <span>{isUpdatingProfile ? 'Saving...' : 'Save Profile Changes'}</span>
+              <span>{isUpdatingProfile ? 'Saving...' : 'Save Profile'}</span>
             </button>
           </div>
         </form>
       </div>
 
       {/* Security Form */}
-      <div className="card">
-        <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem' }}>Security & Password</h3>
+      <div className="card" style={{ padding: '1.75rem' }}>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: 750, color: 'var(--foreground)', marginBottom: '1.25rem' }}>
+          Security & Password
+        </h3>
 
-        <form onSubmit={handleChangePassword}>
+        <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="input-group">
             <label className="input-label">Current Password</label>
             <div style={{ position: 'relative' }}>
@@ -254,11 +274,11 @@ export const Profile: React.FC = () => {
                 required
                 style={{ paddingLeft: '38px' }}
               />
-              <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Lock size={16} color="var(--foreground-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
             <div className="input-group">
               <label className="input-label">New Password</label>
               <div style={{ position: 'relative' }}>
@@ -272,7 +292,7 @@ export const Profile: React.FC = () => {
                   minLength={8}
                   style={{ paddingLeft: '38px' }}
                 />
-                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Lock size={16} color="var(--foreground-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               </div>
             </div>
 
@@ -289,16 +309,17 @@ export const Profile: React.FC = () => {
                   minLength={8}
                   style={{ paddingLeft: '38px' }}
                 />
-                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Lock size={16} color="var(--foreground-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
             <button
               type="submit"
               className="btn btn-secondary"
               disabled={isUpdatingPassword || !currentPassword || !newPassword}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 18px', borderRadius: '10px', fontWeight: 650 }}
             >
               <ShieldCheck size={16} />
               <span>{isUpdatingPassword ? 'Updating...' : 'Update Password'}</span>
@@ -309,3 +330,5 @@ export const Profile: React.FC = () => {
     </div>
   );
 };
+
+export default Profile;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
+import { AlertTriangle, AlertCircle, HelpCircle } from 'lucide-react';
 
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -27,24 +28,54 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 }) => {
   const iconConfig = {
     danger: (
-      <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-rose-500/10 sm:mx-0 sm:h-10 sm:w-10 text-rose-400 mb-3">
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
+      <div
+        style={{
+          width: '48px',
+          height: '48px',
+          borderRadius: '14px',
+          background: '#F5E1DB',
+          color: '#9F5141',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '16px',
+        }}
+      >
+        <AlertCircle size={26} />
       </div>
     ),
     warning: (
-      <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-amber-500/10 sm:mx-0 sm:h-10 sm:w-10 text-amber-400 mb-3">
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+      <div
+        style={{
+          width: '48px',
+          height: '48px',
+          borderRadius: '14px',
+          background: '#F8EBD3',
+          color: '#986A25',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '16px',
+        }}
+      >
+        <AlertTriangle size={26} />
       </div>
     ),
     primary: (
-      <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/10 sm:mx-0 sm:h-10 sm:w-10 text-indigo-400 mb-3">
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+      <div
+        style={{
+          width: '48px',
+          height: '48px',
+          borderRadius: '14px',
+          background: 'var(--primary-soft, #FCE5C2)',
+          color: '#20201D',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '16px',
+        }}
+      >
+        <HelpCircle size={26} />
       </div>
     ),
   };
@@ -69,10 +100,14 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </>
       }
     >
-      <div className="text-center sm:text-left">
+      <div>
         {iconConfig[variant]}
-        <h4 className="text-base font-semibold text-slate-100">{title}</h4>
-        <p className="text-sm text-slate-400 mt-2 leading-relaxed">{message}</p>
+        <h4 style={{ fontSize: '1.15rem', fontWeight: 750, color: 'var(--foreground, #20201D)', marginBottom: '8px' }}>
+          {title}
+        </h4>
+        <p style={{ fontSize: '0.875rem', color: 'var(--foreground-secondary, #77756D)', lineHeight: 1.5, margin: 0 }}>
+          {message}
+        </p>
       </div>
     </Modal>
   );
