@@ -12,6 +12,7 @@ import {
 import { OrgSwitcher } from './OrgSwitcher';
 import { useOrg } from '../../context';
 import { Logo } from '../common/Logo';
+import { ProfileDropdown } from './ProfileDropdown';
 
 interface SidebarProps {
   onOpenCreateOrgModal: () => void;
@@ -144,10 +145,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ))}
         </nav>
 
-        {/* Footer Info */}
-        <div style={{ padding: '16px', borderTop: '1px solid var(--border-subtle, #EEEADF)', fontSize: '0.75rem', color: 'var(--foreground-muted, #77756D)' }}>
-          <div style={{ fontWeight: '650', color: 'var(--foreground, #20201D)' }}>Syntrix Platform v1.0.0</div>
-          <div style={{ fontSize: '0.7rem' }}>Multi-Tenant Cloud</div>
+        {/* User Profile Dropdown Footer */}
+        <div style={{ padding: '12px', borderTop: '1px solid var(--border-subtle, #EEEADF)' }}>
+          <ProfileDropdown onNavigate={onCloseMobile} />
         </div>
       </aside>
     </>

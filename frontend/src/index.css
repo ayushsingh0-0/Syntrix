@@ -460,3 +460,94 @@ textarea:focus-visible {
   animation: dropSlotPulse 1.4s ease-in-out infinite;
 }
 
+/* KokonutUI Command Button */
+.syntrix-command-btn {
+  background: var(--surface, #FFFDF8);
+  border: 1px solid var(--border, #DDD9CC);
+}
+
+.syntrix-command-btn:hover {
+  border-color: var(--primary, #F5AE4D) !important;
+  box-shadow: 0 4px 16px rgba(245, 174, 77, 0.12) !important;
+  transform: translateY(-1px);
+}
+
+.syntrix-command-btn:hover .cmd-icon {
+  transform: scale(1.15) rotate(-5deg);
+  color: var(--primary, #F5AE4D) !important;
+}
+
+.syntrix-command-btn:hover .cmd-badge {
+  background: var(--primary-soft, #FCE5C2) !important;
+  color: var(--foreground, #20201D) !important;
+  border-color: var(--primary, #F5AE4D) !important;
+}
+
+.syntrix-command-btn:hover .cmd-shimmer {
+  transform: translateX(100%) !important;
+}
+
+.syntrix-command-btn:active {
+  transform: scale(0.97);
+}
+
+/* KokonutUI Theme Switch Button */
+.syntrix-theme-switch-btn:hover {
+  border-color: var(--primary, #F5AE4D) !important;
+  box-shadow: 0 4px 16px rgba(245, 174, 77, 0.16) !important;
+  transform: translateY(-1px);
+}
+
+.syntrix-theme-switch-btn:hover .theme-icon-container {
+  transform: scale(1.15) rotate(360deg);
+}
+
+.syntrix-theme-switch-btn:hover .theme-shimmer {
+  transform: translateX(100%) !important;
+}
+
+.syntrix-theme-switch-btn:active {
+  transform: scale(0.96);
+}
+
+/* KokonutUI Slide Text Button */
+.syntrix-slide-btn:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 20px rgba(245, 174, 77, 0.3) !important;
+}
+
+.syntrix-slide-btn:hover .slide-text-default {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.syntrix-slide-btn:hover .slide-text-hover {
+  transform: translateY(-100%);
+  opacity: 1;
+}
+
+.syntrix-slide-btn:active {
+  transform: translateY(0px) scale(0.97);
+}
+
+/* KokonutUI Profile Dropdown styles */
+.dropdown-menu-link:hover {
+  background: var(--surface-secondary, #EEEADF) !important;
+  color: var(--foreground, #20201D) !important;
+}
+
+.dropdown-signout-btn:hover {
+  background: rgba(201, 109, 87, 0.16) !important;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

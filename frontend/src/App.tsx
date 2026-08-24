@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ToastProvider, AuthProvider, OrgProvider } from './context';
+import { ToastProvider, AuthProvider, OrgProvider, ThemeProvider } from './context';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { PageLoader } from './components/common/Skeleton';
 import { ProtectedRoute, PublicRoute } from './components/guards/RouteGuards';
@@ -63,12 +63,13 @@ const ProjectAnalytics = lazy(() =>
 export function App() {
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <AuthProvider>
-          <OrgProvider>
-            <BrowserRouter>
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <OrgProvider>
+              <BrowserRouter>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
                   {/* Public Authentication Routes */}
                   <Route
                     path="/login"
@@ -128,8 +129,9 @@ export function App() {
           </OrgProvider>
         </AuthProvider>
       </ToastProvider>
-    </ErrorBoundary>
-  );
+    </ThemeProvider>
+  </ErrorBoundary>
+);
 }
 
 export default App;

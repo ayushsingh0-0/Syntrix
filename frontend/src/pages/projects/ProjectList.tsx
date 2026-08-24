@@ -109,7 +109,7 @@ export const ProjectList: React.FC = () => {
       case 'PLANNING':
         return { label: 'PLANNING', bg: 'var(--primary-soft)', color: '#20201D' };
       case 'ON_HOLD':
-        return { label: 'ON_HOLD', bg: '#F8EBD3', color: '#986A25' };
+        return { label: 'ON HOLD', bg: '#F8EBD3', color: '#986A25' };
       case 'COMPLETED':
         return { label: 'COMPLETED', bg: '#E4EEE5', color: '#52755A' };
       case 'ARCHIVED':
@@ -119,7 +119,7 @@ export const ProjectList: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
+    <div>
       {/* Header */}
       <div
         style={{
@@ -127,6 +127,7 @@ export const ProjectList: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
+          marginBottom: '24px',
           gap: '16px',
         }}
       >

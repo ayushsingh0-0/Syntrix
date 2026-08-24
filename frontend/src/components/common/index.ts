@@ -7,3 +7,8 @@ export * from './Skeleton';
 export * from './EmptyState';
 export * from './ErrorBoundary';
 export * from './DataTable';
+export * from './CommandButton';
+export * from './SwitchButton';
+export * from './SlideTextButton';
+export * from './AvatarPicker';
+export * from './SmoothTab';

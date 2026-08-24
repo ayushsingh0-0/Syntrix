@@ -14,6 +14,8 @@ import {
   Kanban,
   ListFilter,
   Activity,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
@@ -36,6 +38,16 @@ export const ProjectSprints: React.FC = () => {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [backlogTasks, setBacklogTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Collapsible Sprints state (sprintId -> boolean, true = collapsed)
+  const [collapsedSprints, setCollapsedSprints] = useState<Record<string, boolean>>({});
+
+  const toggleSprintCollapse = (sprintId: string) => {
+    setCollapsedSprints((prev) => ({
+      ...prev,
+      [sprintId]: !prev[sprintId],
+    }));
+  };
 
   // Burndown State
   const [burndownSprintId, setBurndownSprintId] = useState<string | null>(null);
@@ -470,24 +482,39 @@ export const ProjectSprints: React.FC = () => {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {plannedSprints.map((sprint) => {
+              const isCollapsed = !!collapsedSprints[sprint.id];
               const sprintPoints = sprint.tasks.reduce((sum, t) => sum + (t.storyPoints || 1), 0);
 
               return (
-                <div key={sprint.id} className="card" style={{ padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <h3 style={{ fontSize: '1.1rem' }}>{sprint.name}</h3>
-                        <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>
-                          {sprint.tasks.length} tasks • {sprintPoints} pts
-                        </span>
+                <div key={sprint.id} className="card" style={{ padding: '16px', transition: 'all 0.2s ease' }}>
+                  <div
+                    onClick={() => toggleSprintCollapse(sprint.id)}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <div style={{ color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
                       </div>
-                      {sprint.goal && (
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>🎯 {sprint.goal}</p>
-                      )}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <h3 style={{ fontSize: '1.1rem' }}>{sprint.name}</h3>
+                          <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>
+                            {sprint.tasks.length} tasks • {sprintPoints} pts
+                          </span>
+                        </div>
+                        {sprint.goal && (
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>🎯 {sprint.goal}</p>
+                        )}
+                      </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
                       {hasPermission('PROJECT_UPDATE') && (
                         <>
                           <button
@@ -518,62 +545,190 @@ export const ProjectSprints: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Tasks inside Planned Sprint */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {sprint.tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        onClick={() => setSelectedTaskId(task.id)}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '8px 12px',
-                          borderRadius: 'var(--radius-md)',
-                          background: 'var(--bg-surface)',
-                          fontSize: '0.825rem',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', color: 'var(--primary)' }}>
-                            {task.key}
-                          </span>
-                          <span>{task.title}</span>
-                          {getPriorityBadge(task.priority)}
-                        </div>
+                  {/* Collapsible Tasks inside Planned Sprint */}
+                  {!isCollapsed && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+                      {sprint.tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          onClick={() => setSelectedTaskId(task.id)}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '8px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            background: 'var(--bg-surface)',
+                            fontSize: '0.825rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', color: 'var(--primary)' }}>
+                              {task.key}
+                            </span>
+                            <span>{task.title}</span>
+                            {getPriorityBadge(task.priority)}
+                          </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <select
-                            className="input-field"
-                            value={task.sprintId || ''}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              handleAssignTaskToSprint(task.id, e.target.value || null);
-                            }}
-                            style={{ width: 'auto', padding: '2px 6px', fontSize: '0.75rem' }}
-                          >
-                            <option value={sprint.id}>In: {sprint.name}</option>
-                            <option value="">Move to Backlog</option>
-                            {plannedSprints
-                              .filter((ps) => ps.id !== sprint.id)
-                              .map((ps) => (
-                                <option key={ps.id} value={ps.id}>
-                                  Move to: {ps.name}
-                                </option>
-                              ))}
-                          </select>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <select
+                              className="input-field"
+                              value={task.sprintId || ''}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                handleAssignTaskToSprint(task.id, e.target.value || null);
+                              }}
+                              style={{ width: 'auto', padding: '2px 6px', fontSize: '0.75rem' }}
+                            >
+                              <option value={sprint.id}>In: {sprint.name}</option>
+                              <option value="">Move to Backlog</option>
+                              {plannedSprints
+                                .filter((ps) => ps.id !== sprint.id)
+                                .map((ps) => (
+                                  <option key={ps.id} value={ps.id}>
+                                    Move to: {ps.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Completed Sprints History Section */}
+      {(() => {
+        const completedSprints = sprints.filter((s) => s.status === 'COMPLETED');
+        if (completedSprints.length === 0) return null;
+
+        return (
+          <div style={{ marginBottom: '32px' }}>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircle2 size={18} color="var(--emerald)" />
+              <span>Sprint History ({completedSprints.length} Completed)</span>
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {completedSprints.map((sprint) => {
+                const isCollapsed = collapsedSprints[sprint.id] !== false; // Default completed sprints to collapsed
+                const totalPoints = sprint.tasks.reduce((sum, t) => sum + (t.storyPoints || 1), 0);
+                const completedTasks = sprint.tasks.filter((t) => t.status === 'DONE').length;
+
+                return (
+                  <div
+                    key={sprint.id}
+                    className="card"
+                    style={{
+                      padding: '16px',
+                      borderLeft: '4px solid var(--emerald)',
+                      background: 'var(--bg-card)',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <div
+                      onClick={() => toggleSprintCollapse(sprint.id)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <div style={{ color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span className="badge badge-emerald" style={{ fontSize: '0.7rem' }}>
+                              COMPLETED
+                            </span>
+                            <h3 style={{ fontSize: '1.1rem' }}>{sprint.name}</h3>
+                            <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>
+                              {completedTasks}/{sprint.tasks.length} tasks • {totalPoints} pts
+                            </span>
+                          </div>
+                          {sprint.goal && (
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.825rem', marginTop: '4px' }}>
+                              🎯 <strong>Goal:</strong> {sprint.goal}
+                            </p>
+                          )}
+                          {sprint.completedAt && (
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>
+                              🏁 Completed on {new Date(sprint.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenBurndown(sprint.id);
+                        }}
+                      >
+                        <TrendingDown size={14} color="var(--primary)" />
+                        <span>Burndown Report</span>
+                      </button>
+                    </div>
+
+                    {/* Collapsible Task Roster inside Completed Sprint */}
+                    {!isCollapsed && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+                        {sprint.tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            onClick={() => setSelectedTaskId(task.id)}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              borderRadius: 'var(--radius-md)',
+                              background: 'var(--bg-surface)',
+                              fontSize: '0.825rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', color: 'var(--primary)' }}>
+                                {task.key}
+                              </span>
+                              <span style={{ color: task.status === 'DONE' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                {task.title}
+                              </span>
+                              {getPriorityBadge(task.priority)}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <span className="badge badge-emerald" style={{ fontSize: '0.65rem' }}>
+                                DONE
+                              </span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)' }}>
+                                {task.storyPoints ? `${task.storyPoints} pts` : '1 pt'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Product Backlog Section */}
       <div>

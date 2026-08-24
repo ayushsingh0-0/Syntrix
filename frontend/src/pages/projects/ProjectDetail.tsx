@@ -20,6 +20,7 @@ import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
 import { getErrorMessage } from '../../utils/error';
 import { Button } from '../../components/common/Button';
+import { SmoothTabs } from '../../components/common/SmoothTab';
 import type {
   Project,
   ProjectMember,
@@ -285,43 +286,17 @@ export const ProjectDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '8px',
-          borderBottom: '1px solid var(--border-subtle)',
-          marginBottom: '24px',
-        }}
-      >
-        {[
-          { key: 'overview' as const, label: 'Overview', icon: <FolderKanban size={16} /> },
-          { key: 'members' as const, label: `Members (${members.length})`, icon: <Users size={16} /> },
-          { key: 'settings' as const, label: 'Settings', icon: <Settings size={16} /> },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === tab.key ? '2px solid var(--primary)' : '2px solid transparent',
-              color: activeTab === tab.key ? '#fff' : 'var(--text-secondary)',
-              fontWeight: activeTab === tab.key ? '700' : '500',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {tab.icon}
-            <span>{tab.label}</span>
-          </button>
-        ))}
+      {/* KokonutUI Smooth Tabs */}
+      <div style={{ marginBottom: '24px' }}>
+        <SmoothTabs
+          activeTab={activeTab}
+          onChange={(tabId) => setActiveTab(tabId as 'overview' | 'members' | 'settings')}
+          tabs={[
+            { id: 'overview', title: 'Overview', icon: <FolderKanban size={15} /> },
+            { id: 'members', title: `Members (${members.length})`, icon: <Users size={15} /> },
+            { id: 'settings', title: 'Settings', icon: <Settings size={15} /> },
+          ]}
+        />
       </div>
 
       {/* Overview Tab */}

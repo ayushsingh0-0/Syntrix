@@ -4,3 +4,4 @@ export * from './AuthContext';
 export * from './useAuth';
 export * from './OrgContext';
 export * from './useOrg';
+export * from './ThemeContext';

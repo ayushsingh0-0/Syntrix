@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, LogOut, Shield, UserCircle, Search, Command, Menu } from 'lucide-react';
+import { User, LogOut, Shield, UserCircle, Menu } from 'lucide-react';
 import { useAuth, useOrg } from '../../context';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { GlobalSearchModal } from '../modals/GlobalSearchModal';
 import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer';
+import { CommandButton } from '../common/CommandButton';
+import { SwitchButton } from '../common/SwitchButton';
 
 interface NavbarProps {
   onToggleMobileMenu?: () => void;
@@ -58,36 +60,37 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
     <>
       <header
         style={{
-          height: 'var(--header-height, 64px)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          height: '60px',
+          padding: '0 24px',
           background: 'var(--surface, #FFFDF8)',
           borderBottom: '1px solid var(--border, #DDD9CC)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 24px',
           position: 'sticky',
           top: 0,
           zIndex: 40,
         }}
       >
-        {/* Left: Mobile Menu Toggle & Workspace Info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        {/* Left: Mobile Toggle & Workspace Context */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {onToggleMobileMenu && (
             <button
               type="button"
               className="mobile-hamburger-btn"
               onClick={onToggleMobileMenu}
-              aria-label="Toggle navigation menu"
+              aria-label="Open navigation sidebar"
               style={{
-                background: 'transparent',
-                border: '1px solid var(--border, #DDD9CC)',
-                borderRadius: '8px',
-                padding: '6px',
                 display: 'none',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer',
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: 'var(--surface-secondary, #EEEADF)',
+                border: '1px solid var(--border-subtle, #E9E6DC)',
                 color: 'var(--foreground, #20201D)',
+                cursor: 'pointer',
               }}
             >
               <Menu size={18} />
@@ -96,20 +99,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
 
           {currentOrg ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--foreground-muted, #77756D)' }}>Workspace:</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: '750', color: 'var(--foreground, #20201D)' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--foreground-muted, #9A978D)' }}>
+                Workspace:
+              </span>
+              <span style={{ fontWeight: 650, fontSize: '0.925rem', color: 'var(--foreground, #20201D)' }}>
                 {currentOrg.name}
               </span>
               {myRole && (
                 <span
-                  className="badge badge-primary"
+                  className="badge badge-amber"
                   style={{
                     fontSize: '0.65rem',
-                    fontWeight: 750,
-                    background: 'var(--primary-soft, #FCE5C2)',
-                    color: '#20201D',
-                    padding: '2px 8px',
-                    borderRadius: '6px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '2px 6px',
                   }}
                 >
                   {myRole}
@@ -121,51 +124,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
           )}
         </div>
 
-        {/* Center: Global Search Quick Trigger */}
+        {/* Center: Interactive KokonutUI Command Button */}
         {currentOrg && (
-          <button
-            type="button"
+          <CommandButton
             onClick={() => setIsSearchOpen(true)}
             aria-label="Open command palette search"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              background: 'var(--background, #F5F3EB)',
-              border: '1px solid var(--border, #DDD9CC)',
-              borderRadius: '10px',
-              padding: '7px 14px',
-              color: 'var(--foreground-secondary, #77756D)',
-              cursor: 'pointer',
-              fontSize: '0.825rem',
-              minWidth: '220px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Search size={14} color="var(--primary-hover, #E99532)" />
-            <span style={{ flex: 1, textAlign: 'left', fontWeight: 500 }}>Search workspace...</span>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px',
-                padding: '2px 6px',
-                background: 'var(--surface, #FFFDF8)',
-                border: '1px solid var(--border, #DDD9CC)',
-                borderRadius: '4px',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                color: 'var(--foreground-muted, #77756D)',
-              }}
-            >
-              <Command size={10} />
-              <span>K</span>
-            </div>
-          </button>
+          />
         )}
 
-        {/* Right: Notification Center & User Menu */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }} ref={dropdownRef}>
+        {/* Right: Theme Toggle, Notification Center & User Menu */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} ref={dropdownRef}>
+          {/* KokonutUI Theme Switcher */}
+          <SwitchButton size="sm" />
+
           {/* Notification Center */}
           <NotificationCenter onSelectTask={handleSelectTask} />
 

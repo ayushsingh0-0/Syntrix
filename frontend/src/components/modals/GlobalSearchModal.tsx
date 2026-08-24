@@ -1,16 +1,22 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Search,
+  Send,
   X,
   FolderKanban,
   CheckSquare,
-  MessageSquare,
   Users,
   ArrowRight,
   Clock,
   Command,
   Loader2,
+  Kanban,
+  Flame,
+  BarChart2,
+  Settings,
+  Layers,
 } from 'lucide-react';
 import api from '../../services/api';
 import { useOrg } from '../../context';
@@ -20,14 +26,64 @@ import type {
   TaskSearchResult,
   ProjectSearchResult,
   CommentSearchResult,
-  MemberSearchResult,
 } from '../../types';
+
+/**
+ * @author: @kokonutui (adapted for Syntrix design system)
+ * @description: KokonutUI Action Search Bar & Global Workspace Command Palette
+ * @website: https://kokonutui.com
+ */
+
+interface QuickAction {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  short: string;
+  end: string;
+  path: string;
+}
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectTask?: (taskId: string, projectId: string) => void;
 }
+
+const ANIMATION_VARIANTS = {
+  container: {
+    hidden: { opacity: 0, height: 0 },
+    show: {
+      opacity: 1,
+      height: 'auto',
+      transition: {
+        height: { duration: 0.35 },
+        staggerChildren: 0.05,
+      },
+    },
+    exit: {
+      opacity: 0,
+      height: 0,
+      transition: {
+        height: { duration: 0.25 },
+        opacity: { duration: 0.2 },
+      },
+    },
+  },
+  item: {
+    hidden: { opacity: 0, y: 10 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.25, ease: 'easeOut' },
+    },
+    exit: {
+      opacity: 0,
+      y: -8,
+      transition: { duration: 0.15 },
+    },
+  },
+} as const;
 
 export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
   isOpen,
@@ -46,6 +102,85 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
 
+  // Quick Action Commands definition
+  const quickActions: QuickAction[] = useMemo(() => [
+    {
+      id: 'action-kanban',
+      label: 'Open Kanban Board',
+      description: 'Active Project Kanban & Task Flow',
+      icon: <Kanban size={16} color="var(--primary, #F5AE4D)" />,
+      short: '⌘B',
+      end: 'Board',
+      path: '/projects/cmlm0l0001synth01syn00001/board',
+    },
+    {
+      id: 'action-sprints',
+      label: 'Sprint Planning & History',
+      description: 'Sprint backlog, burndown & story points',
+      icon: <Flame size={16} color="#E99532" />,
+      short: '⌘S',
+      end: 'Sprints',
+      path: '/projects/cmlm0l0001synth01syn00001/sprints',
+    },
+    {
+      id: 'action-analytics',
+      label: 'Velocity & KPIs',
+      description: 'Completion throughput & milestone forecasting',
+      icon: <BarChart2 size={16} color="#719879" />,
+      short: '⌘A',
+      end: 'Analytics',
+      path: '/projects/cmlm0l0001synth01syn00001/analytics',
+    },
+    {
+      id: 'action-projects',
+      label: 'Projects Directory',
+      description: 'View all workspace projects & deliverables',
+      icon: <FolderKanban size={16} color="#D9963D" />,
+      short: '⌘P',
+      end: 'Directory',
+      path: '/projects',
+    },
+    {
+      id: 'action-teams',
+      label: 'Teams & Squads',
+      description: 'Cross-functional engineering & product teams',
+      icon: <Layers size={16} color="#C96D57" />,
+      short: '⌘T',
+      end: 'Teams',
+      path: '/organization/teams',
+    },
+    {
+      id: 'action-members',
+      label: 'Organization Members',
+      description: 'Team roster, roles & permission governance',
+      icon: <Users size={16} color="#719879" />,
+      short: '⌘M',
+      end: 'Members',
+      path: '/organization/members',
+    },
+    {
+      id: 'action-settings',
+      label: 'Workspace Settings',
+      description: 'Organization profile, branding & configurations',
+      icon: <Settings size={16} color="var(--foreground-secondary, #77756D)" />,
+      short: '⌘,',
+      end: 'Settings',
+      path: '/organization/settings',
+    },
+  ], []);
+
+  // Filtered quick actions when typing commands
+  const filteredQuickActions = useMemo(() => {
+    if (!query.trim()) return quickActions;
+    const normalized = query.toLowerCase().trim();
+    return quickActions.filter(
+      (a) =>
+        a.label.toLowerCase().includes(normalized) ||
+        a.description.toLowerCase().includes(normalized) ||
+        a.end.toLowerCase().includes(normalized)
+    );
+  }, [query, quickActions]);
+
   // Auto-focus input when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -62,11 +197,11 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
 
     const trimmed = query.trim();
     if (!trimmed) {
+      setResults(null);
       return;
     }
 
     let isMounted = true;
-
     const timer = setTimeout(() => {
       setIsLoading(true);
       api
@@ -102,48 +237,59 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
   }, [query, activeCategory, currentOrg, isOpen]);
 
   // Flattened list of visible search items for keyboard navigation
-  const visibleItems = React.useMemo(() => {
-    if (!results || !query.trim()) return [];
+  const visibleItems = useMemo(() => {
+    if (!query.trim()) {
+      return filteredQuickActions.map((a) => ({ type: 'ACTION' as const, data: a }));
+    }
+
     const items: Array<{
-      type: 'TASK' | 'PROJECT' | 'COMMENT' | 'MEMBER';
-      data: TaskSearchResult | ProjectSearchResult | CommentSearchResult | MemberSearchResult;
+      type: 'TASK' | 'PROJECT' | 'COMMENT' | 'MEMBER' | 'ACTION';
+      data: any;
     }> = [];
 
-    if (activeCategory === 'ALL' || activeCategory === 'TASKS') {
-      results.tasks.forEach((t) => items.push({ type: 'TASK', data: t }));
+    if (filteredQuickActions.length > 0) {
+      filteredQuickActions.forEach((a) => items.push({ type: 'ACTION', data: a }));
     }
-    if (activeCategory === 'ALL' || activeCategory === 'PROJECTS') {
-      results.projects.forEach((p) => items.push({ type: 'PROJECT', data: p }));
-    }
-    if (activeCategory === 'ALL' || activeCategory === 'COMMENTS') {
-      results.comments.forEach((c) => items.push({ type: 'COMMENT', data: c }));
-    }
-    if (activeCategory === 'ALL' || activeCategory === 'MEMBERS') {
-      results.members.forEach((m) => items.push({ type: 'MEMBER', data: m }));
+
+    if (results) {
+      if (activeCategory === 'ALL' || activeCategory === 'TASKS') {
+        results.tasks.forEach((t) => items.push({ type: 'TASK', data: t }));
+      }
+      if (activeCategory === 'ALL' || activeCategory === 'PROJECTS') {
+        results.projects.forEach((p) => items.push({ type: 'PROJECT', data: p }));
+      }
+      if (activeCategory === 'ALL' || activeCategory === 'COMMENTS') {
+        results.comments.forEach((c) => items.push({ type: 'COMMENT', data: c }));
+      }
+      if (activeCategory === 'ALL' || activeCategory === 'MEMBERS') {
+        results.members.forEach((m) => items.push({ type: 'MEMBER', data: m }));
+      }
     }
 
     return items;
-  }, [results, activeCategory, query]);
+  }, [results, activeCategory, query, filteredQuickActions]);
 
   const handleSelectItem = useCallback(
-    (item: {
-      type: 'TASK' | 'PROJECT' | 'COMMENT' | 'MEMBER';
-      data: TaskSearchResult | ProjectSearchResult | CommentSearchResult | MemberSearchResult;
-    }) => {
+    (item: { type: 'TASK' | 'PROJECT' | 'COMMENT' | 'MEMBER' | 'ACTION'; data: any }) => {
       onClose();
       switch (item.type) {
+        case 'ACTION': {
+          const action = item.data as QuickAction;
+          navigate(action.path);
+          break;
+        }
         case 'TASK': {
           const task = item.data as TaskSearchResult;
           if (onSelectTask) {
             onSelectTask(task.id, task.projectId);
           } else {
-            navigate(`/projects/${task.projectId}/boards`);
+            navigate(`/projects/${task.projectId}/board`);
           }
           break;
         }
         case 'PROJECT': {
           const project = item.data as ProjectSearchResult;
-          navigate(`/projects/${project.id}/boards`);
+          navigate(`/projects/${project.id}/board`);
           break;
         }
         case 'COMMENT': {
@@ -151,12 +297,12 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
           if (onSelectTask && comment.task) {
             onSelectTask(comment.task.id, comment.task.projectId);
           } else if (comment.task) {
-            navigate(`/projects/${comment.task.projectId}/boards`);
+            navigate(`/projects/${comment.task.projectId}/board`);
           }
           break;
         }
         case 'MEMBER':
-          navigate('/team');
+          navigate('/organization/members');
           break;
       }
     },
@@ -179,9 +325,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIndex((prev) =>
-          visibleItems.length > 0
-            ? (prev - 1 + visibleItems.length) % visibleItems.length
-            : 0
+          visibleItems.length > 0 ? (prev - 1 + visibleItems.length) % visibleItems.length : 0
         );
       } else if (e.key === 'Enter') {
         if (visibleItems.length > 0 && visibleItems[selectedIndex]) {
@@ -210,8 +354,8 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.65)',
-        backdropFilter: 'blur(4px)',
+        backgroundColor: 'rgba(24, 23, 19, 0.65)',
+        backdropFilter: 'blur(6px)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
@@ -226,68 +370,97 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       <div
         style={{
           width: '100%',
-          maxWidth: '680px',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+          maxWidth: '660px',
+          background: 'var(--surface, #FFFDF8)',
+          border: '1px solid var(--border, #DDD9CC)',
+          borderRadius: '18px',
+          boxShadow: '0 20px 60px rgba(35, 31, 20, 0.18)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           maxHeight: '80vh',
         }}
       >
-        {/* Search Input Bar */}
+        {/* KokonutUI Animated Search Input Bar */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             padding: '16px 20px',
-            borderBottom: '1px solid var(--border-subtle)',
+            borderBottom: '1px solid var(--border, #DDD9CC)',
             gap: '12px',
             position: 'relative',
+            background: 'var(--surface, #FFFDF8)',
           }}
         >
-          {isLoading ? (
-            <Loader2
-              size={20}
-              color="var(--primary)"
-              style={{ animation: 'spin 1s linear infinite' }}
-            />
-          ) : (
-            <Search size={20} color="var(--text-secondary)" />
-          )}
+          {/* Animated Search / Send Morphing Icon */}
+          <div style={{ position: 'relative', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AnimatePresence mode="popLayout">
+              {isLoading ? (
+                <motion.div
+                  key="loader"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                >
+                  <Loader2 size={20} color="var(--primary, #F5AE4D)" style={{ animation: 'spin 1s linear infinite' }} />
+                </motion.div>
+              ) : query.length > 0 ? (
+                <motion.div
+                  key="send"
+                  initial={{ y: -16, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 16, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Send size={18} color="var(--primary, #F5AE4D)" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="search"
+                  initial={{ y: -16, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 16, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Search size={18} color="var(--primary-hover, #E99532)" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search tasks, projects, comments, or members..."
+            placeholder="Search tasks, sprints, projects, or type commands..."
             style={{
               flex: 1,
               background: 'transparent',
               border: 'none',
               outline: 'none',
               fontSize: '1rem',
-              color: 'var(--text-primary)',
+              fontWeight: 550,
+              color: 'var(--foreground, #20201D)',
               fontFamily: 'inherit',
             }}
           />
 
           {query && (
             <button
+              type="button"
               onClick={() => setQuery('')}
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: 'var(--text-secondary)',
+                color: 'var(--foreground-muted, #77756D)',
                 cursor: 'pointer',
                 padding: '4px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 'var(--radius-sm)',
+                borderRadius: '6px',
               }}
             >
               <X size={16} />
@@ -299,81 +472,86 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
-              padding: '3px 7px',
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.75rem',
-              color: 'var(--text-secondary)',
+              padding: '3px 8px',
+              background: 'var(--surface-secondary, #EEEADF)',
+              border: '1px solid var(--border, #DDD9CC)',
+              borderRadius: '6px',
+              fontSize: '0.725rem',
+              fontWeight: 700,
+              color: 'var(--foreground-secondary, #77756D)',
             }}
           >
             <kbd>ESC</kbd>
           </div>
         </div>
 
-        {/* Category Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 20px',
-            borderBottom: '1px solid var(--border-subtle)',
-            background: 'var(--bg-card)',
-            overflowX: 'auto',
-          }}
-        >
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              style={{
-                background: activeCategory === cat.id ? 'var(--primary)' : 'transparent',
-                color: activeCategory === cat.id ? '#ffffff' : 'var(--text-secondary)',
-                border: 'none',
-                borderRadius: 'var(--radius-md)',
-                padding: '5px 12px',
-                fontSize: '0.8rem',
-                fontWeight: activeCategory === cat.id ? '600' : '400',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>{cat.label}</span>
-              {typeof cat.count === 'number' && (
-                <span
-                  style={{
-                    fontSize: '0.7rem',
-                    padding: '1px 6px',
-                    borderRadius: '10px',
-                    background:
-                      activeCategory === cat.id
-                        ? 'rgba(255, 255, 255, 0.25)'
-                        : 'var(--bg-surface)',
-                  }}
-                >
-                  {cat.count}
-                </span>
-              )}
-            </button>
-          ))}
-          {results && results.durationMs > 0 && (
-            <span
-              style={{
-                marginLeft: 'auto',
-                fontSize: '0.75rem',
-                color: 'var(--text-muted)',
-              }}
-            >
-              {results.durationMs}ms
-            </span>
-          )}
-        </div>
+        {/* Category Tabs (When Query is active) */}
+        {query.trim().length > 0 && results && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 20px',
+              borderBottom: '1px solid var(--border-subtle, #EEEADF)',
+              background: 'var(--surface-secondary, #EEEADF)',
+              overflowX: 'auto',
+            }}
+          >
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setActiveCategory(cat.id)}
+                style={{
+                  background: activeCategory === cat.id ? 'var(--primary, #F5AE4D)' : 'transparent',
+                  color: activeCategory === cat.id ? '#20201D' : 'var(--foreground-secondary, #77756D)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '4px 10px',
+                  fontSize: '0.8rem',
+                  fontWeight: activeCategory === cat.id ? 700 : 550,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>{cat.label}</span>
+                {typeof cat.count === 'number' && (
+                  <span
+                    style={{
+                      fontSize: '0.675rem',
+                      padding: '1px 5px',
+                      borderRadius: '8px',
+                      background:
+                        activeCategory === cat.id
+                          ? 'rgba(32, 32, 29, 0.15)'
+                          : 'var(--surface, #FFFDF8)',
+                      color: activeCategory === cat.id ? '#20201D' : 'var(--foreground-muted, #77756D)',
+                    }}
+                  >
+                    {cat.count}
+                  </span>
+                )}
+              </button>
+            ))}
+            {results && results.durationMs > 0 && (
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: '0.725rem',
+                  color: 'var(--foreground-muted, #77756D)',
+                }}
+              >
+                {results.durationMs}ms
+              </span>
+            )}
+          </div>
+        )}
 
-        {/* Results Container */}
+        {/* Results / Quick Actions Container */}
         <div
           ref={resultsContainerRef}
           style={{
@@ -382,73 +560,137 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
             padding: '12px 16px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px',
+            gap: '8px',
           }}
         >
-          {!query.trim() && (
-            <div
-              style={{
-                padding: '40px 20px',
-                textAlign: 'center',
-                color: 'var(--text-secondary)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '12px',
-              }}
-            >
-              <Command size={36} color="var(--primary)" style={{ opacity: 0.8 }} />
-              <div style={{ fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                Global Workspace Search
-              </div>
-              <div style={{ fontSize: '0.825rem', maxWidth: '380px', lineHeight: '1.4' }}>
-                Search for tasks by title or key (e.g. <span className="badge badge-primary">SYN-12</span>),
-                projects, comments, or team members.
-              </div>
-            </div>
-          )}
-
-          {query.trim() && !isLoading && visibleItems.length === 0 && (
-            <div
-              style={{
-                padding: '40px 20px',
-                textAlign: 'center',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              <div style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-                No results found
-              </div>
-              <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>
-                No matches found for "{query}". Try checking for typos or searching by keyword.
-              </div>
-            </div>
-          )}
-
-          {/* Group: Tasks */}
-          {results && (activeCategory === 'ALL' || activeCategory === 'TASKS') && results.tasks.length > 0 && (
+          {/* Quick Actions & Commands Group */}
+          {filteredQuickActions.length > 0 && (
             <div>
               <div
                 style={{
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  color: 'var(--text-muted)',
+                  fontSize: '0.725rem',
+                  fontWeight: 750,
+                  color: 'var(--foreground-muted, #77756D)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  padding: '4px 8px',
+                  letterSpacing: '0.06em',
+                  padding: '6px 8px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                 }}
               >
-                <CheckSquare size={13} /> Tasks ({results.tasks.length})
+                <Command size={13} color="var(--primary, #F5AE4D)" />
+                <span>Commands & Quick Actions</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+
+              <motion.ul
+                variants={ANIMATION_VARIANTS.container}
+                initial="hidden"
+                animate="show"
+                style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}
+              >
+                {filteredQuickActions.map((action) => {
+                  const itemIndex = visibleItems.findIndex(
+                    (v) => v.type === 'ACTION' && v.data.id === action.id
+                  );
+                  const isSelected = selectedIndex === itemIndex;
+
+                  return (
+                    <motion.li
+                      key={action.id}
+                      variants={ANIMATION_VARIANTS.item}
+                      onClick={() => handleSelectItem({ type: 'ACTION', data: action })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        background: isSelected ? 'var(--primary-soft, #FCE5C2)' : 'transparent',
+                        border: isSelected ? '1px solid var(--primary, #F5AE4D)' : '1px solid transparent',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: 'var(--surface-secondary, #EEEADF)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {action.icon}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 650, fontSize: '0.875rem', color: 'var(--foreground, #20201D)' }}>
+                            {action.label}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--foreground-muted, #77756D)' }}>
+                            {action.description}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span
+                          style={{
+                            fontSize: '0.675rem',
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: 'var(--surface-secondary, #EEEADF)',
+                            color: 'var(--foreground-secondary, #77756D)',
+                          }}
+                        >
+                          {action.short}
+                        </span>
+                        <span
+                          className="badge badge-amber"
+                          style={{
+                            fontSize: '0.65rem',
+                            padding: '2px 6px',
+                          }}
+                        >
+                          {action.end}
+                        </span>
+                      </div>
+                    </motion.li>
+                  );
+                })}
+              </motion.ul>
+            </div>
+          )}
+
+          {/* Group: Tasks Search Results */}
+          {results && (activeCategory === 'ALL' || activeCategory === 'TASKS') && results.tasks.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <div
+                style={{
+                  fontSize: '0.725rem',
+                  fontWeight: 750,
+                  color: 'var(--foreground-muted, #77756D)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  padding: '6px 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <CheckSquare size={13} color="var(--primary, #F5AE4D)" />
+                <span>Tasks ({results.tasks.length})</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {results.tasks.map((task) => {
                   const itemIndex = visibleItems.findIndex(
                     (v) => v.type === 'TASK' && v.data.id === task.id
                   );
-                  const isSelected = itemIndex === selectedIndex;
+                  const isSelected = selectedIndex === itemIndex;
 
                   return (
                     <div
@@ -458,62 +700,43 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        borderRadius: 'var(--radius-md)',
-                        background: isSelected ? 'var(--primary-subtle)' : 'transparent',
-                        border: isSelected ? '1px solid var(--primary)' : '1px solid transparent',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        background: isSelected ? 'var(--primary-soft, #FCE5C2)' : 'transparent',
+                        border: isSelected ? '1px solid var(--primary, #F5AE4D)' : '1px solid transparent',
                         cursor: 'pointer',
-                        transition: 'background 0.1s ease',
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                         <span
-                          className="badge badge-primary"
-                          style={{ fontWeight: '700', fontSize: '0.75rem', flexShrink: 0 }}
+                          style={{
+                            fontSize: '0.75rem',
+                            fontFamily: 'monospace',
+                            fontWeight: 750,
+                            color: 'var(--primary-hover, #E99532)',
+                            background: 'var(--surface-secondary, #EEEADF)',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                          }}
                         >
                           {task.key}
                         </span>
-                        <span
-                          style={{
-                            fontSize: '0.9rem',
-                            fontWeight: '500',
-                            color: 'var(--text-primary)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {task.title}
-                        </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>
-                          in {task.project?.name}
-                        </span>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--foreground, #20201D)' }}>
+                            {task.title}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--foreground-muted, #77756D)', marginLeft: '8px' }}>
+                            in {task.project?.name}
+                          </span>
+                        </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                        <span
-                          style={{
-                            fontSize: '0.7rem',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background:
-                              task.status === 'DONE'
-                                ? 'rgba(16, 185, 129, 0.15)'
-                                : task.status === 'IN_PROGRESS'
-                                ? 'rgba(59, 130, 246, 0.15)'
-                                : 'rgba(100, 116, 139, 0.15)',
-                            color:
-                              task.status === 'DONE'
-                                ? '#10b981'
-                                : task.status === 'IN_PROGRESS'
-                                ? '#3b82f6'
-                                : 'var(--text-secondary)',
-                            fontWeight: '600',
-                          }}
-                        >
-                          {task.status}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="badge badge-amber" style={{ fontSize: '0.675rem' }}>
+                          {typeof task.status === 'object' && task.status ? (task.status as any).name : String(task.status)}
                         </span>
-                        <ArrowRight size={14} color="var(--text-muted)" />
+                        <ArrowRight size={14} color="var(--foreground-muted, #77756D)" />
                       </div>
                     </div>
                   );
@@ -522,30 +745,31 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
             </div>
           )}
 
-          {/* Group: Projects */}
+          {/* Group: Projects Search Results */}
           {results && (activeCategory === 'ALL' || activeCategory === 'PROJECTS') && results.projects.length > 0 && (
-            <div>
+            <div style={{ marginTop: '8px' }}>
               <div
                 style={{
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  color: 'var(--text-muted)',
+                  fontSize: '0.725rem',
+                  fontWeight: 750,
+                  color: 'var(--foreground-muted, #77756D)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  padding: '4px 8px',
+                  letterSpacing: '0.06em',
+                  padding: '6px 8px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                 }}
               >
-                <FolderKanban size={13} /> Projects ({results.projects.length})
+                <FolderKanban size={13} color="var(--primary, #F5AE4D)" />
+                <span>Projects ({results.projects.length})</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {results.projects.map((project) => {
                   const itemIndex = visibleItems.findIndex(
                     (v) => v.type === 'PROJECT' && v.data.id === project.id
                   );
-                  const isSelected = itemIndex === selectedIndex;
+                  const isSelected = selectedIndex === itemIndex;
 
                   return (
                     <div
@@ -555,303 +779,87 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        borderRadius: 'var(--radius-md)',
-                        background: isSelected ? 'var(--primary-subtle)' : 'transparent',
-                        border: isSelected ? '1px solid var(--primary)' : '1px solid transparent',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        background: isSelected ? 'var(--primary-soft, #FCE5C2)' : 'transparent',
+                        border: isSelected ? '1px solid var(--primary, #F5AE4D)' : '1px solid transparent',
                         cursor: 'pointer',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: 'var(--radius-md)',
-                            background: 'rgba(99, 102, 241, 0.15)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#6366f1',
-                            fontWeight: '700',
-                            fontSize: '0.75rem',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {project.key}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-                            {project.name}
-                          </div>
-                          {project.description && (
-                            <div
-                              style={{
-                                fontSize: '0.75rem',
-                                color: 'var(--text-secondary)',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                maxWidth: '380px',
-                              }}
-                            >
-                              {project.description}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                        {project._count && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {project._count.tasks} tasks
-                          </span>
-                        )}
-                        <ArrowRight size={14} color="var(--text-muted)" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Group: Comments */}
-          {results && (activeCategory === 'ALL' || activeCategory === 'COMMENTS') && results.comments.length > 0 && (
-            <div>
-              <div
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  padding: '4px 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <MessageSquare size={13} /> Comments ({results.comments.length})
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                {results.comments.map((comment) => {
-                  const itemIndex = visibleItems.findIndex(
-                    (v) => v.type === 'COMMENT' && v.data.id === comment.id
-                  );
-                  const isSelected = itemIndex === selectedIndex;
-
-                  return (
-                    <div
-                      key={comment.id}
-                      onClick={() => handleSelectItem({ type: 'COMMENT', data: comment })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        borderRadius: 'var(--radius-md)',
-                        background: isSelected ? 'var(--primary-subtle)' : 'transparent',
-                        border: isSelected ? '1px solid var(--primary)' : '1px solid transparent',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1, minWidth: 0 }}>
-                        {comment.user?.avatarUrl ? (
-                          <img
-                            src={comment.user.avatarUrl}
-                            alt={comment.user.name}
-                            style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '50%',
-                              objectFit: 'cover',
-                              marginTop: '2px',
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '50%',
-                              background: 'var(--primary)',
-                              color: '#fff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.7rem',
-                              fontWeight: '700',
-                              marginTop: '2px',
-                            }}
-                          >
-                            {comment.user?.name?.charAt(0) || 'U'}
-                          </div>
-                        )}
-
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-                              {comment.user?.name}
-                            </span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              on {comment.task?.key} ({comment.task?.title})
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              fontSize: '0.825rem',
-                              color: 'var(--text-secondary)',
-                              marginTop: '2px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            "{comment.content}"
-                          </div>
-                        </div>
-                      </div>
-
-                      <ArrowRight size={14} color="var(--text-muted)" style={{ marginTop: '4px', flexShrink: 0 }} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Group: Members */}
-          {results && (activeCategory === 'ALL' || activeCategory === 'MEMBERS') && results.members.length > 0 && (
-            <div>
-              <div
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  padding: '4px 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <Users size={13} /> Members ({results.members.length})
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                {results.members.map((member) => {
-                  const itemIndex = visibleItems.findIndex(
-                    (v) => v.type === 'MEMBER' && v.data.id === member.id
-                  );
-                  const isSelected = itemIndex === selectedIndex;
-
-                  return (
-                    <div
-                      key={member.id}
-                      onClick={() => handleSelectItem({ type: 'MEMBER', data: member })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        borderRadius: 'var(--radius-md)',
-                        background: isSelected ? 'var(--primary-subtle)' : 'transparent',
-                        border: isSelected ? '1px solid var(--primary)' : '1px solid transparent',
-                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {member.user?.avatarUrl ? (
-                          <img
-                            src={member.user.avatarUrl}
-                            alt={member.user.name}
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '50%',
-                              objectFit: 'cover',
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '50%',
-                              background: 'var(--bg-card)',
-                              border: '1px solid var(--border-subtle)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.8rem',
-                              fontWeight: '600',
-                              color: 'var(--text-primary)',
-                            }}
-                          >
-                            {member.user?.name?.charAt(0) || 'U'}
-                          </div>
-                        )}
-
-                        <div>
-                          <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-                            {member.user?.name}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {member.user?.email}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>
-                          {member.role}
+                        <FolderKanban size={16} color="var(--primary, #F5AE4D)" />
+                        <span style={{ fontSize: '0.875rem', fontWeight: 650, color: 'var(--foreground, #20201D)' }}>
+                          {project.name}
                         </span>
-                        <ArrowRight size={14} color="var(--text-muted)" />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--foreground-muted, #77756D)' }}>
+                          ({project.key})
+                        </span>
                       </div>
+                      <ArrowRight size={14} color="var(--foreground-muted, #77756D)" />
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* No results message */}
+          {query.trim() && !isLoading && visibleItems.length === 0 && (
+            <div
+              style={{
+                padding: '36px 20px',
+                textAlign: 'center',
+                color: 'var(--foreground-muted, #77756D)',
+              }}
+            >
+              <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--foreground, #20201D)' }}>
+                No results found
+              </div>
+              <div style={{ fontSize: '0.825rem', marginTop: '4px' }}>
+                No matches found for "{query}". Try checking keywords or browse commands above.
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer Shortcut Bar */}
+        {/* KokonutUI Action Footer */}
         <div
           style={{
             padding: '10px 20px',
-            background: 'var(--bg-card)',
-            borderTop: '1px solid var(--border-subtle)',
+            background: 'var(--surface-secondary, #EEEADF)',
+            borderTop: '1px solid var(--border, #DDD9CC)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             fontSize: '0.75rem',
-            color: 'var(--text-muted)',
+            color: 'var(--foreground-secondary, #77756D)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <span>
-              <kbd style={{ padding: '2px 5px', background: 'var(--bg-surface)', borderRadius: '3px' }}>↑</kbd>{' '}
-              <kbd style={{ padding: '2px 5px', background: 'var(--bg-surface)', borderRadius: '3px' }}>↓</kbd>{' '}
+              <kbd style={{ padding: '2px 5px', background: 'var(--surface, #FFFDF8)', border: '1px solid var(--border, #DDD9CC)', borderRadius: '4px' }}>↑</kbd>{' '}
+              <kbd style={{ padding: '2px 5px', background: 'var(--surface, #FFFDF8)', border: '1px solid var(--border, #DDD9CC)', borderRadius: '4px' }}>↓</kbd>{' '}
               Navigate
             </span>
             <span>
-              <kbd style={{ padding: '2px 5px', background: 'var(--bg-surface)', borderRadius: '3px' }}>↵</kbd>{' '}
+              <kbd style={{ padding: '2px 5px', background: 'var(--surface, #FFFDF8)', border: '1px solid var(--border, #DDD9CC)', borderRadius: '4px' }}>↵</kbd>{' '}
               Select
             </span>
             <span>
-              <kbd style={{ padding: '2px 5px', background: 'var(--bg-surface)', borderRadius: '3px' }}>ESC</kbd>{' '}
-              Close
+              <kbd style={{ padding: '2px 5px', background: 'var(--surface, #FFFDF8)', border: '1px solid var(--border, #DDD9CC)', borderRadius: '4px' }}>ESC</kbd>{' '}
+              Cancel
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Clock size={12} />
-            <span>Real-time Workspace Index</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Clock size={13} color="var(--primary, #F5AE4D)" />
+            <span style={{ fontWeight: 600 }}>Syntrix Command Palette</span>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default GlobalSearchModal;
