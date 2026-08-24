@@ -3,6 +3,7 @@ import type { TaskPriorityType, TaskStatusType } from './board.types';
 export interface TaskQueryParams {
   page?: number;
   limit?: number;
+  cursor?: string;
   q?: string;
   status?: TaskStatusType;
   priority?: TaskPriorityType;

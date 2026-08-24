@@ -318,14 +318,14 @@ export class BoardRepository {
     return prisma.task.update({
       where: { id: taskId },
       data: {
-        title: data.title,
-        description: data.description,
-        columnId: data.columnId,
-        priority: data.priority,
-        status: data.status,
-        assigneeId: data.assigneeId,
-        dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-        estimatedHours: data.estimatedHours,
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.columnId !== undefined && { columnId: data.columnId }),
+        ...(data.priority !== undefined && { priority: data.priority }),
+        ...(data.status !== undefined && { status: data.status }),
+        ...(data.assigneeId !== undefined && { assigneeId: data.assigneeId }),
+        ...(data.dueDate !== undefined && { dueDate: data.dueDate ? new Date(data.dueDate) : null }),
+        ...(data.estimatedHours !== undefined && { estimatedHours: data.estimatedHours }),
       },
       include: {
         assignee: { select: { id: true, name: true, email: true, avatarUrl: true } },

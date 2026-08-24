@@ -182,14 +182,20 @@ export const updateProjectDetailsService = async (
     throw new ApiError(403, 'Forbidden: You do not have permission to update this project');
   }
 
-  if (data.teamId) {
-    const team = await findTeamById(data.teamId);
+  const sanitizedData: UpdateProjectInput = {
+    ...data,
+    teamId: data.teamId && data.teamId.trim() ? data.teamId.trim() : null,
+    description: data.description !== undefined ? (data.description && data.description.trim() ? data.description.trim() : null) : undefined,
+  };
+
+  if (sanitizedData.teamId) {
+    const team = await findTeamById(sanitizedData.teamId);
     if (!team || team.organizationId !== orgId) {
       throw new ApiError(404, 'Team not found in this organization');
     }
   }
 
-  const updated = await updateProject(projectId, data);
+  const updated = await updateProject(projectId, sanitizedData);
   const callerMembership = await findProjectMember(projectId, actorUserId);
 
   await cacheService.invalidatePattern(CacheKeys.orgPattern(orgId));

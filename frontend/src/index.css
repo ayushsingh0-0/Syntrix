@@ -412,3 +412,51 @@ textarea:focus-visible {
   box-shadow: 0 0 0 3px rgba(245, 174, 77, 0.22) !important;
 }
 
+/* Kanban Drag and Drop Animations */
+@keyframes dropSlotPulse {
+  0%, 100% {
+    opacity: 0.85;
+    transform: scale(0.99);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.kanban-task-card {
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.kanban-task-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(35, 31, 20, 0.08);
+  border-color: var(--primary, #F5AE4D) !important;
+}
+
+.kanban-task-card:active {
+  cursor: grabbing;
+}
+
+.kanban-task-card.is-dragging {
+  opacity: 0.35 !important;
+  transform: scale(0.96) rotate(-1.5deg) !important;
+  border: 1.5px dashed var(--primary, #F5AE4D) !important;
+  box-shadow: none !important;
+}
+
+.kanban-column-dropzone {
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.kanban-column-dropzone.is-drag-over {
+  background: rgba(245, 174, 77, 0.07) !important;
+  border-color: var(--primary, #F5AE4D) !important;
+}
+
+.kanban-drop-slot {
+  animation: dropSlotPulse 1.4s ease-in-out infinite;
+}
+

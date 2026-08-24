@@ -49,12 +49,19 @@ export class AttachmentController {
   };
 
   download = async (req: Request, res: Response): Promise<void> => {
+    const userId = res.locals.user?.userId;
     const attachmentId = getParam(req.params.attachmentId);
-    const attachment = await this.attachmentService.getAttachmentById(attachmentId);
+
+    const attachment = await this.attachmentService.getAttachmentForDownload(attachmentId, userId);
 
     if (!fs.existsSync(attachment.path)) {
       throw new ApiError(404, 'File not found on storage server');
     }
+
+    // Security Headers for File Downloads
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'");
+    res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
 
     res.download(attachment.path, attachment.originalName);
   };

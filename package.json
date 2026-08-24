@@ -8,10 +8,12 @@
     "backend"
   ],
   "scripts": {
-    "dev": "echo \"Development commands will be added later\"",
-    "build": "echo \"Build commands will be added later\"",
-    "lint": "echo \"Lint commands will be added later\"",
-    "test": "echo \"Test commands will be added later\""
+    "dev:backend": "npm --workspace=backend run dev",
+    "dev:frontend": "npm --workspace=frontend run dev",
+    "build": "npm --workspace=backend run build && npm --workspace=frontend run build",
+    "test": "npm --workspace=backend test && npm --workspace=frontend test",
+    "test:backend": "npm --workspace=backend test",
+    "test:frontend": "npm --workspace=frontend test"
   },
   "engines": {
     "node": ">=22"

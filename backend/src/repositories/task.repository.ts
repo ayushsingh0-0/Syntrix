@@ -8,12 +8,12 @@ import type {
 
 export class TaskRepository {
   /**
-   * Paginated task query with multi-attribute filtering & sorting
+   * Paginated task query with multi-attribute filtering, sorting, and cursor support
    */
   async findPaginatedTasks(projectId: string, params: TaskQueryParams) {
     const page = params.page || 1;
     const limit = params.limit || 20;
-    const skip = (page - 1) * limit;
+    const skip = params.cursor ? 1 : (page - 1) * limit;
 
     const where: any = { projectId };
 
@@ -48,6 +48,7 @@ export class TaskRepository {
       prisma.task.count({ where }),
       prisma.task.findMany({
         where,
+        ...(params.cursor ? { cursor: { id: params.cursor } } : {}),
         skip,
         take: limit,
         orderBy,
@@ -77,6 +78,8 @@ export class TaskRepository {
       }),
     ]);
 
+    const nextCursor = tasks.length === limit ? tasks[tasks.length - 1].id : null;
+
     return {
       tasks,
       meta: {
@@ -84,6 +87,9 @@ export class TaskRepository {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        nextCursor,
+        hasNextPage: page * limit < total,
+        hasPrevPage: page > 1,
       },
     };
   }

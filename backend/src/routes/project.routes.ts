@@ -53,6 +53,7 @@ router.patch(
   validate(updateProjectMemberRoleSchema),
   asyncHandler(updateProjectMemberRole)
 );
+router.delete('/:projectId/members/:userId', asyncHandler(removeProjectMember));
 // Sub-resource routers: Boards, Tasks & Sprints
 import boardRoutes from './board.routes';
 import taskRoutes from './task.routes';

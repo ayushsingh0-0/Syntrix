@@ -1,0 +1,65 @@
+name: Syntrix Continuous Integration (CI)
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  validate-and-test:
+    name: Build, Lint & Automated Test Matrix
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: syntrix_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mariadb-admin ping -h localhost -u root -prootpassword" --health-interval 10s --health-timeout 5s --health-retries 5
+
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 5
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: |
+          cd backend
+          npx prisma generate
+
+      - name: Verify Backend TypeScript Compilation
+        run: |
+          cd backend
+          npm run build
+
+      - name: Verify Frontend Production Build
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Execute Automated Vitest Suite (Backend & Frontend)
+        env:
+          DATABASE_URL: mysql://root:rootpassword@127.0.0.1:3306/syntrix_test
+          JWT_SECRET: test-super-secret-ci-jwt-key-32-chars-long
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+          NODE_ENV: test
+        run: npm test

@@ -1,0 +1,61 @@
+services:
+  # Backend API Service
+  - type: web
+    name: syntrix-api
+    env: node
+    plan: standard
+    region: oregon
+    rootDir: backend
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: node dist/server.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: syntrix-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: syntrix-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: BCRYPT_SALT_ROUNDS
+        value: 10
+
+  # Frontend Web Client
+  - type: web
+    name: syntrix-web
+    env: static
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://syntrix-api.onrender.com/api/v1
+
+# Managed Cloud Databases
+databases:
+  - name: syntrix-db
+    plan: standard
+    region: oregon
+    databaseName: syntrix
+    user: syntrix_admin
+
+  - type: redis
+    name: syntrix-redis
+    plan: standard
+    region: oregon
+    ipAllowList: []

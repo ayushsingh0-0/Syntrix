@@ -1,0 +1,31 @@
+# Local Development Infrastructure (Database & Redis only)
+# Run: docker compose -f docker-compose.dev.yml up -d
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: syntrix_mariadb_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: syntrix
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ''
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    ports:
+      - '3306:3306'
+    volumes:
+      - syntrix_dev_db_data:/var/lib/mysql
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: syntrix_redis_dev
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - syntrix_dev_redis_data:/data
+
+volumes:
+  syntrix_dev_db_data:
+  syntrix_dev_redis_data:

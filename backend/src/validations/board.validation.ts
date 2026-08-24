@@ -36,23 +36,39 @@ export const reorderColumnsSchema = z.object({
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1, 'Task title is required').max(255),
   description: z.string().trim().nullable().optional(),
-  columnId: z.string().nullable().optional(),
+  columnId: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   status: z.enum(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'CANCELLED']).optional(),
-  assigneeId: z.string().nullable().optional(),
-  dueDate: z.string().datetime().nullable().optional(),
-  estimatedHours: z.number().positive().nullable().optional(),
+  assigneeId: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
+  dueDate: z
+    .union([z.string(), z.date()])
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (!val) return null;
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }),
+  estimatedHours: z.number().min(0).nullable().optional(),
 });
 
 export const updateTaskSchema = z.object({
   title: z.string().trim().min(1).max(255).optional(),
   description: z.string().trim().nullable().optional(),
-  columnId: z.string().nullable().optional(),
+  columnId: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   status: z.enum(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'CANCELLED']).optional(),
-  assigneeId: z.string().nullable().optional(),
-  dueDate: z.string().datetime().nullable().optional(),
-  estimatedHours: z.number().positive().nullable().optional(),
+  assigneeId: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
+  dueDate: z
+    .union([z.string(), z.date()])
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (!val) return null;
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }),
+  estimatedHours: z.number().min(0).nullable().optional(),
 });
 
 export const moveTaskSchema = z.object({

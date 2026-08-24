@@ -2,7 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import fs from 'fs';
-import { ApiError } from '../utils/ApiError';
+import { sanitizeFilename, validateFileExtension } from '../utils/fileSecurity';
 
 const uploadDir = path.resolve(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -14,54 +14,28 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
+    const sanitized = sanitizeFilename(file.originalname);
+    const ext = path.extname(sanitized).toLowerCase();
     const uniqueHash = crypto.randomBytes(16).toString('hex');
     cb(null, `${uniqueHash}-${Date.now()}${ext}`);
   },
 });
 
-const ALLOWED_MIME_TYPES = new Set([
-  // Images
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'image/webp',
-  'image/gif',
-  'image/svg+xml',
-  // Documents
-  'application/pdf',
-  'text/plain',
-  'text/markdown',
-  'text/csv',
-  // Code & Data
-  'application/json',
-  'application/xml',
-  'text/javascript',
-  'text/typescript',
-  // Archives
-  'application/zip',
-  'application/x-zip-compressed',
-  'application/x-tar',
-  'application/gzip',
-]);
-
 const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
-  if (ALLOWED_MIME_TYPES.has(file.mimetype.toLowerCase())) {
+  try {
+    const sanitizedName = sanitizeFilename(file.originalname);
+    validateFileExtension(sanitizedName, file.mimetype);
     cb(null, true);
-  } else {
-    cb(
-      new ApiError(
-        400,
-        `Unsupported file type '${file.mimetype}'. Allowed types include images, PDFs, text files, JSON, CSV, and zip archives.`
-      )
-    );
+  } catch (error) {
+    cb(error as Error);
   }
 };
 
 export const uploadAttachment = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 1,
   },
   fileFilter,
 });

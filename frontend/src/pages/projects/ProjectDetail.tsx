@@ -19,6 +19,7 @@ import {
 import { useOrg, useToast } from '../../context';
 import api from '../../services/api';
 import { getErrorMessage } from '../../utils/error';
+import { Button } from '../../components/common/Button';
 import type {
   Project,
   ProjectMember,
@@ -362,113 +363,216 @@ export const ProjectDetail: React.FC = () => {
 
       {/* Members Tab */}
       {activeTab === 'members' && (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Add Member Form */}
-          <form
-            onSubmit={handleAddMember}
-            className="card"
-            style={{
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'center',
-              padding: '14px 18px',
-              marginBottom: '20px',
-            }}
-          >
-            <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>Add Member:</span>
-            <select
-              className="input-field"
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
-              required
-              style={{ flex: 1 }}
+          {eligibleOrgMembers.length > 0 && (
+            <form
+              onSubmit={handleAddMember}
+              className="card"
+              style={{
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                padding: '14px 18px',
+                background: 'var(--surface-secondary, #EEEADF)',
+                border: '1px solid var(--border, #DDD9CC)',
+                borderRadius: '14px',
+              }}
             >
-              <option value="">-- Choose organization member --</option>
-              {eligibleOrgMembers.map((om) => (
-                <option key={om.userId} value={om.userId}>
-                  {om.user.name} ({om.user.email})
-                </option>
-              ))}
-            </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', fontWeight: 750, color: 'var(--foreground, #20201D)' }}>
+                <UserPlus size={16} color="var(--primary-hover, #E99532)" />
+                <span>Add Member to Project:</span>
+              </div>
 
-            <select
-              className="input-field"
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as ProjectRole)}
-              style={{ width: '120px' }}
-            >
-              <option value="MEMBER">MEMBER</option>
-              <option value="LEAD">LEAD</option>
-              <option value="VIEWER">VIEWER</option>
-            </select>
+              <select
+                className="input-field"
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                required
+                style={{
+                  flex: '1 1 240px',
+                  background: 'var(--surface, #FFFDF8)',
+                  borderColor: 'var(--border, #DDD9CC)',
+                  height: '40px',
+                  padding: '6px 12px',
+                  fontSize: '0.85rem',
+                  borderRadius: '10px',
+                }}
+              >
+                <option value="">-- Choose organization member --</option>
+                {eligibleOrgMembers.map((om) => (
+                  <option key={om.userId} value={om.userId}>
+                    {om.user?.name} ({om.user?.email})
+                  </option>
+                ))}
+              </select>
 
-            <button type="submit" className="btn btn-primary btn-sm" disabled={isAddingMember || !selectedUserId}>
-              <UserPlus size={14} />
-              <span>Add</span>
-            </button>
-          </form>
+              <select
+                className="input-field"
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value as ProjectRole)}
+                style={{
+                  width: '120px',
+                  background: 'var(--surface, #FFFDF8)',
+                  borderColor: 'var(--border, #DDD9CC)',
+                  height: '40px',
+                  padding: '6px 12px',
+                  fontSize: '0.85rem',
+                  borderRadius: '10px',
+                }}
+              >
+                <option value="MEMBER">MEMBER</option>
+                <option value="LEAD">LEAD</option>
+                <option value="VIEWER">VIEWER</option>
+              </select>
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                isLoading={isAddingMember}
+                disabled={!selectedUserId}
+                leftIcon={<UserPlus size={14} />}
+                style={{ height: '40px' }}
+              >
+                Assign Member
+              </Button>
+            </form>
+          )}
 
           {/* Members Table */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div
+            className="card"
+            style={{
+              padding: 0,
+              overflow: 'hidden',
+              background: 'var(--surface, #FFFDF8)',
+              border: '1px solid var(--border, #DDD9CC)',
+              borderRadius: '18px',
+            }}
+          >
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-default)' }}>
-                  <th style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Member</th>
-                  <th style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Project Role</th>
-                  <th style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                <tr style={{ background: 'var(--surface-secondary, #EEEADF)', borderBottom: '1px solid var(--border, #DDD9CC)' }}>
+                  <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 750, color: 'var(--foreground-muted, #77756D)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Member Details
+                  </th>
+                  <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 750, color: 'var(--foreground-muted, #77756D)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Project Role
+                  </th>
+                  <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 750, color: 'var(--foreground-muted, #77756D)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right' }}>
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {members.map((m) => (
-                  <tr key={m.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '14px 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div
+                {members.map((m) => {
+                  const isLead = m.role === 'LEAD';
+
+                  return (
+                    <tr
+                      key={m.id}
+                      style={{
+                        borderBottom: '1px solid var(--border-subtle, #EEEADF)',
+                        transition: 'background 0.15s ease',
+                        height: '60px',
+                      }}
+                    >
+                      <td style={{ padding: '14px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          {m.user?.avatarUrl ? (
+                            <img
+                              src={m.user.avatarUrl}
+                              alt={m.user.name}
+                              style={{
+                                width: '38px',
+                                height: '38px',
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                                border: '1.5px solid var(--border, #DDD9CC)',
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: '38px',
+                                height: '38px',
+                                borderRadius: '50%',
+                                background: isLead ? 'var(--primary-soft, #FCE5C2)' : 'var(--surface-secondary, #EEEADF)',
+                                color: '#20201D',
+                                border: '1px solid var(--border, #DDD9CC)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 750,
+                                fontSize: '0.85rem',
+                              }}
+                            >
+                              {m.user?.name?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                          )}
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--foreground, #20201D)' }}>
+                              {m.user?.name}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--foreground-muted, #77756D)' }}>
+                              {m.user?.bio || m.user?.email || 'Project Member'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '14px 20px' }}>
+                        <select
+                          className="input-field"
+                          value={m.role}
+                          onChange={(e) => handleRoleChange(m.userId, e.target.value as ProjectRole)}
                           style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: 'var(--radius-full)',
-                            background: 'var(--bg-card)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: '700',
-                            fontSize: '0.8rem',
+                            padding: '5px 10px',
+                            fontSize: '0.775rem',
+                            fontWeight: 700,
+                            borderRadius: '8px',
+                            border: isLead ? '1px solid var(--primary, #F5AE4D)' : '1px solid var(--border, #DDD9CC)',
+                            background: isLead ? 'var(--primary-soft, #FCE5C2)' : 'var(--surface-secondary, #EEEADF)',
+                            color: '#20201D',
+                            cursor: 'pointer',
+                            outline: 'none',
                           }}
                         >
-                          {m.user.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{m.user.name}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.user.bio || 'Project Member'}</div>
-                        </div>
-                      </div>
-                    </td>
+                          <option value="MEMBER">MEMBER</option>
+                          <option value="LEAD">👑 LEAD</option>
+                          <option value="VIEWER">VIEWER</option>
+                        </select>
+                      </td>
 
-                    <td style={{ padding: '14px 20px' }}>
-                      <select
-                        className="input-field"
-                        value={m.role}
-                        onChange={(e) => handleRoleChange(m.userId, e.target.value as ProjectRole)}
-                        style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8rem' }}
-                      >
-                        <option value="LEAD">LEAD</option>
-                        <option value="MEMBER">MEMBER</option>
-                        <option value="VIEWER">VIEWER</option>
-                      </select>
-                    </td>
-
-                    <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => handleRemoveMember(m.userId, m.user.name)}
-                        style={{ color: 'var(--rose)' }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => handleRemoveMember(m.userId, m.user?.name || 'Member')}
+                          title="Remove from project"
+                          style={{
+                            color: 'var(--foreground-muted, #77756D)',
+                            padding: '6px',
+                            borderRadius: '6px',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.color = '#9F5141';
+                            (e.currentTarget as HTMLElement).style.background = '#F5E1DB';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.color = 'var(--foreground-muted, #77756D)';
+                            (e.currentTarget as HTMLElement).style.background = 'transparent';
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

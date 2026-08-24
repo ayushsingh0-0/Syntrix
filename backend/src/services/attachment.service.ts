@@ -1,9 +1,11 @@
+import path from 'path';
 import { AttachmentRepository } from '../repositories/attachment.repository';
 import { TaskRepository } from '../repositories/task.repository';
 import { findOrgMember } from '../repositories/organization.repository';
 import { defaultStorageProvider } from './storage/localStorage.provider';
 import { globalActivityService } from './activity.service';
 import { ApiError } from '../utils/ApiError';
+import { verifyFileMagicBytes, sanitizeFilename } from '../utils/fileSecurity';
 
 export class AttachmentService {
   private attachmentRepo: AttachmentRepository;
@@ -37,13 +39,26 @@ export class AttachmentService {
 
     const storedFile = await defaultStorageProvider.saveFile(file);
 
+    // Deep binary signature (magic byte) security verification
+    const ext = path.extname(storedFile.originalName);
+    const isValidSignature = await verifyFileMagicBytes(storedFile.path, ext);
+    if (!isValidSignature) {
+      await defaultStorageProvider.deleteFile(storedFile.path);
+      throw new ApiError(
+        400,
+        'File security validation failed: Binary signature does not match the file extension.'
+      );
+    }
+
+    const sanitizedOriginal = sanitizeFilename(storedFile.originalName);
+
     const attachment = await this.attachmentRepo.createAttachment({
       organizationId: orgId,
       projectId,
       taskId,
       userId,
       filename: storedFile.filename,
-      originalName: storedFile.originalName,
+      originalName: sanitizedOriginal,
       mimeType: storedFile.mimeType,
       size: storedFile.size,
       url: storedFile.url,
@@ -71,6 +86,18 @@ export class AttachmentService {
     if (!attachment) {
       throw new ApiError(404, 'Attachment not found');
     }
+    return attachment;
+  }
+
+  async getAttachmentForDownload(attachmentId: string, userId: string) {
+    const attachment = await this.getAttachmentById(attachmentId);
+
+    // Tenant Isolation Check: verify user is a member of the organization owning this attachment
+    const member = await findOrgMember(attachment.organizationId, userId);
+    if (!member) {
+      throw new ApiError(403, 'Access denied: You are not a member of the organization owning this file');
+    }
+
     return attachment;
   }
 

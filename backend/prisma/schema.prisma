@@ -350,6 +350,8 @@ model Task {
 
 
   @@index([projectId, status])
+  @@index([projectId, createdAt])
+  @@index([assigneeId, status])
   @@index([sprintId, status])
   @@index([columnId, position])
 }
